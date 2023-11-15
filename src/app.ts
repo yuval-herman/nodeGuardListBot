@@ -1,8 +1,12 @@
 import { readFileSync } from "fs"
 import { getOptionParsers } from "./parsers"
 import { callAPI, getUpdates } from "./telegramApi"
-import { Configs, UserData } from "./types"
+import { Configs, Time, UserData } from "./types"
 import { cleanUser, createList, log_update } from "./utils"
+import {
+	callback_values,
+	handleCallbackQuery,
+} from "./callbackQueryHandling.js"
 export const configs = {} as Configs
 try {
 	Object.assign(configs, JSON.parse(readFileSync("botConfigs.json", "utf-8")))
@@ -18,11 +22,35 @@ try {
 
 const usersData = new Map<number, UserData>()
 
+function sendGuardList(
+	user: UserData & { startTime: Time; endTime: Time; nameList: string[] }
+) {
+	callAPI("sendMessage", {
+		chat_id: user.id,
+		text: createList(user.startTime, user.endTime, user.nameList),
+		reply_markup: {
+			inline_keyboard: [
+				[{ text: "ערוך", callback_data: callback_values.edit_sent_list }],
+			],
+		},
+	})
+}
+
+function verifyAllData(
+	user: UserData
+): user is UserData & { startTime: Time; endTime: Time; nameList: string[] } {
+	return Boolean(user.startTime && user.endTime && user.nameList)
+}
+
 ;(async () => {
 	console.log(await callAPI("getMe"))
 	while (true) {
 		for (const update of await getUpdates()) {
 			log_update(update)
+			if (update.callback_query) {
+				handleCallbackQuery(update.callback_query)
+				continue
+			}
 			const message = update.message
 			if (!message || !message.from || !message.text) continue
 			let user = usersData.get(message.from.id)
@@ -38,13 +66,10 @@ const usersData = new Map<number, UserData>()
 				usersData.set(user.id, user)
 			}
 			for (const parser of user.state.optionsParsers) {
-				if (parser(message, user)) break
+				if (await parser(message, user)) break
 			}
-			if (user.startTime && user.endTime && user.nameList) {
-				callAPI("sendMessage", {
-					chat_id: user.id,
-					text: createList(user.startTime, user.endTime, user.nameList),
-				})
+			if (verifyAllData(user)) {
+				sendGuardList(user)
 				cleanUser(user)
 			}
 		}
