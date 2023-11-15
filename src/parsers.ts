@@ -6,13 +6,19 @@ export const timeRegex = /(\d{1,2}):(\d{1,2})/
 
 export function getOptionParsers(state: UserCurrentStates): OptionsParser[] {
 	if (state === "start") {
-		return [startParser, startTimeParser, endTimeParser, nameListParser]
+		return [
+			startParser,
+			startTimeParser,
+			endTimeParser,
+			nameListParser,
+			unknownMessageParser,
+		]
 	}
 	return []
 }
-export const startParser: OptionsParser = (msg, user) => {
+export const startParser: OptionsParser = async (msg, user) => {
 	if (msg.text === "/start") {
-		callAPI("sendMessage", {
+		await callAPI("sendMessage", {
 			chat_id: user.id,
 			text: "שלום!\nאני בוט פשוט שיודע לעזור ברשימות שמירה.\nשלח לי רשימת שמות ושעת התחלה וסוף ואני יעשה את השאר.",
 		})
@@ -20,24 +26,31 @@ export const startParser: OptionsParser = (msg, user) => {
 	}
 	return false
 }
-export const startTimeParser: OptionsParser = (msg, user) => {
+export const startTimeParser: OptionsParser = async (msg, user) => {
 	if (!msg.text || user.startTime) return false
 	const regResults = timeRegex.exec(msg.text)
 	if (!regResults) return false
 	const time: Time = [+regResults[1], +regResults[2]]
-	callAPI("sendMessage", {
+	await callAPI("sendMessage", {
 		chat_id: user.id,
 		text: `השמירה תתחיל ב-${timeFormat(time)}`,
 	})
 	user.startTime = time
 	return true
 }
-export const endTimeParser: OptionsParser = (msg, user) => {
+export const endTimeParser: OptionsParser = async (msg, user) => {
 	if (!msg.text || user.endTime) return false
 	const regResults = timeRegex.exec(msg.text)
 	if (!regResults) return false
 	const time: Time = [+regResults[1], +regResults[2]]
-	callAPI("sendMessage", {
+	if (user.startTime?.every((v, i) => v === time[i])) {
+		await callAPI("sendMessage", {
+			chat_id: user.id,
+			text: `כבר שלחת לי את שעת ההתחלה, עכשיו שלח לי את שעת הסיום`,
+		})
+		return true
+	}
+	await callAPI("sendMessage", {
 		chat_id: user.id,
 		text: `השמירה תסתיים ב-${timeFormat(time)}`,
 	})
@@ -45,24 +58,36 @@ export const endTimeParser: OptionsParser = (msg, user) => {
 	return true
 }
 
-export const nameListParser: OptionsParser = (msg, user) => {
+export const nameListParser: OptionsParser = async (msg, user) => {
 	if (!msg.text || !msg.text.includes("\n")) return false
 	const nameList = msg.text.split("\n")
-	callAPI("sendMessage", {
+	await callAPI("sendMessage", {
 		chat_id: user.id,
 		text: `קיבלתי את רשימת השמות! ישנם ${nameList.length} שומרים.`,
 	})
 	user.nameList = nameList
-	if (!user.startTime) {
-		callAPI("sendMessage", {
-			chat_id: user.id,
-			text: `עוד לא שלחת לי את שעת ההתחלה של השמירה...`,
-		})
-	} else if (!user.endTime) {
-		callAPI("sendMessage", {
-			chat_id: user.id,
-			text: `עוד לא שלחת לי את שעת הסוף של השמירה...`,
-		})
-	}
+	return true
+}
+
+export const unknownMessageParser: OptionsParser = async (msg, user) => {
+	await callAPI("sendMessage", {
+		parse_mode: "HTML",
+		chat_id: user.id,
+		text: `שיחה איתי בדרך כלל תראה כך:
+<u>אתה:</u> 11:00
+<b>אני:</b> השמירה תתחיל ב-11:00
+<u>אתה:</u> 19:00
+<b>אני:</b> השמירה תסתיים ב-19:00
+<u>אתה:</u> פלוני
+אלמוני
+שמואל
+דוד
+<b>אני:</b> קיבלתי את רשימת השמות! ישנם 4 שומרים.
+<b>אני:</b> 11:00 פלוני
+13:00 אלמוני
+15:00 שמואל
+17:00 דוד`,
+	})
+
 	return true
 }
