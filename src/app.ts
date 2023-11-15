@@ -1,12 +1,17 @@
 import { readFileSync } from "fs"
-import { getOptionParsers } from "./parsers"
-import { callAPI, getUpdates } from "./telegramApi"
-import { Configs, Time, UserData } from "./types"
-import { cleanUser, createList, log_update } from "./utils"
 import {
 	callback_values,
 	handleCallbackQuery,
 } from "./callbackQueryHandling.js"
+import { getOptionParsers } from "./parsers"
+import { callAPI, getUpdates } from "./telegramApi"
+import { CompleteUserData, Configs, UserData } from "./types"
+import {
+	cleanUser,
+	createList,
+	createListWithDuration,
+	log_update,
+} from "./utils"
 export const configs = {} as Configs
 try {
 	Object.assign(configs, JSON.parse(readFileSync("botConfigs.json", "utf-8")))
@@ -22,12 +27,17 @@ try {
 
 const usersData = new Map<number, UserData>()
 
-function sendGuardList(
-	user: UserData & { startTime: Time; endTime: Time; nameList: string[] }
-) {
+function sendGuardList(user: CompleteUserData) {
 	callAPI("sendMessage", {
 		chat_id: user.id,
-		text: createList(user.startTime, user.endTime, user.nameList),
+		text:
+			"endTime" in user
+				? createList(user.startTime, user.endTime, user.nameList)
+				: createListWithDuration(
+						user.startTime,
+						user.guardDuration,
+						user.nameList
+				  ),
 		reply_markup: {
 			inline_keyboard: [
 				[{ text: "ערוך", callback_data: callback_values.edit_sent_list }],
@@ -36,10 +46,10 @@ function sendGuardList(
 	})
 }
 
-function verifyAllData(
-	user: UserData
-): user is UserData & { startTime: Time; endTime: Time; nameList: string[] } {
-	return Boolean(user.startTime && user.endTime && user.nameList)
+function verifyAllData(user: UserData): user is CompleteUserData {
+	return Boolean(
+		user.startTime && (user.endTime || user.guardDuration) && user.nameList
+	)
 }
 
 ;(async () => {

@@ -34,7 +34,33 @@ function secondsToTime(timeInSeconds: number): Time {
 function timeToSeconds(time: Time): number {
 	return time[0] * (60 * 60) + time[1] * 60
 }
-export function createList(startTime: Time, endTime: Time, nameList: string[]) {
+
+export function createListWithDuration(
+	startTime: Time,
+	duration: number,
+	nameList: string[]
+): string {
+	const startTimeSeconds = timeToSeconds(startTime)
+	let timedListString = ""
+	let guardTime = startTimeSeconds
+
+	for (let index = 0; index < nameList.length; index++) {
+		timedListString += `${timeFormat(
+			secondsToTime(
+				guardTime > 24 * 60 * 60 ? guardTime - 24 * 60 * 60 : guardTime
+			)
+		)} ${nameList[index]}\n`
+		guardTime += duration
+	}
+
+	return timedListString
+}
+
+export function createList(
+	startTime: Time,
+	endTime: Time,
+	nameList: string[]
+): string {
 	const { guardSeconds, startTimeSeconds, endTimeSeconds, multiDay } =
 		calculateTime(startTime, endTime, nameList.length)
 	let timedListString = ""
