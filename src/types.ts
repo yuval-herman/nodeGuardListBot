@@ -12,3 +12,8 @@ export interface UserData {
 	id: number
 	state: UserState
 }
+
+export interface Configs {
+	token: string
+	last_update_id?: number
+}

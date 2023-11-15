@@ -1,14 +1,20 @@
-import { existsSync, readFileSync } from "fs"
+import { readFileSync } from "fs"
 import { readFile, writeFile } from "fs/promises"
-import { callAPI } from "./telegramApi"
-import { getUpdates } from "./telegramApi"
-import { UserData } from "./types"
 import { getOptionParsers } from "./parsers"
-import { createList, cleanUser } from "./utils"
-export const TOKEN = JSON.parse(readFileSync("botConfigs.json", "utf-8")).token
-
-if (!existsSync("botConfigs.json")) {
-	writeFile("botConfigs.json", "")
+import { callAPI, getUpdates } from "./telegramApi"
+import { Configs, UserData } from "./types"
+import { cleanUser, createList } from "./utils"
+export const configs = {} as Configs
+try {
+	Object.assign(configs, JSON.parse(readFileSync("botConfigs.json", "utf-8")))
+	if (!("token" in configs)) {
+		throw Error("No token in bot configs file (botConfigs.json)")
+	}
+} catch (error) {
+	if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+		error.message = "bot configs file does not exist (botConfigs.json)"
+	}
+	throw error
 }
 
 async function log_update(update: Update) {
