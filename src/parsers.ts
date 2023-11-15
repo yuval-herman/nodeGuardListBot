@@ -1,6 +1,6 @@
-import { timeFormat } from "./utils"
 import { callAPI } from "./telegramApi.js"
 import { OptionsParser, Time, UserCurrentStates } from "./types"
+import { timeFormat } from "./utils"
 
 export const timeRegex = /(\d{1,2}):(\d{1,2})/
 

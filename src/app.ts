@@ -1,9 +1,8 @@
 import { readFileSync } from "fs"
-import { readFile, writeFile } from "fs/promises"
 import { getOptionParsers } from "./parsers"
 import { callAPI, getUpdates } from "./telegramApi"
 import { Configs, UserData } from "./types"
-import { cleanUser, createList } from "./utils"
+import { cleanUser, createList, log_update } from "./utils"
 export const configs = {} as Configs
 try {
 	Object.assign(configs, JSON.parse(readFileSync("botConfigs.json", "utf-8")))
@@ -15,32 +14,6 @@ try {
 		error.message = "bot configs file does not exist (botConfigs.json)"
 	}
 	throw error
-}
-
-async function log_update(update: Update) {
-	if (update.message?.from) {
-		const user = update.message.from
-		let users: Record<number, User> = {}
-		try {
-			users = JSON.parse(await readFile("users.json", { encoding: "utf-8" }))
-			users[user.id] = user
-		} catch (error) {
-			// If the file does not exist this is fine, else we should rethrow
-			if (
-				!(
-					error instanceof Error &&
-					"code" in error &&
-					error.code === "ENOENT"
-				)
-			) {
-				throw error
-			}
-		}
-		writeFile("users.json", JSON.stringify(users), { flag: "w" })
-	}
-	writeFile("log.log", JSON.stringify(update, null, 1) + "-".repeat(100), {
-		flag: "a",
-	})
 }
 
 const usersData = new Map<number, UserData>()

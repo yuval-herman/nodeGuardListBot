@@ -1,3 +1,4 @@
+import { readFile, writeFile } from "fs/promises"
 import { Time, UserData } from "./types"
 
 export function timeFormat(time: Time) {
@@ -58,4 +59,29 @@ export function cleanUser(user: UserData) {
 	user.startTime = undefined
 	user.nameList = undefined
 	user.state.currentState = "start"
+}
+export async function log_update(update: Update) {
+	if (update.message?.from) {
+		const user = update.message.from
+		let users: Record<number, User> = {}
+		try {
+			users = JSON.parse(await readFile("users.json", { encoding: "utf-8" }))
+			users[user.id] = user
+		} catch (error) {
+			// If the file does not exist this is fine, else we should rethrow
+			if (
+				!(
+					error instanceof Error &&
+					"code" in error &&
+					error.code === "ENOENT"
+				)
+			) {
+				throw error
+			}
+		}
+		writeFile("users.json", JSON.stringify(users), { flag: "w" })
+	}
+	writeFile("log.log", JSON.stringify(update, null, 1) + "-".repeat(100), {
+		flag: "a",
+	})
 }
