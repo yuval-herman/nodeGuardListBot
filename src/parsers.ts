@@ -1,11 +1,12 @@
 import { callAPI } from "./telegramApi.js"
-import { OptionsParser, Time, UserCurrentStates } from "./types"
+import { OptionsParser, Time, UserData } from "./types"
 import { timeFormat } from "./utils"
 
 export const timeRegex = /(\d{1,2}):(\d{1,2})/
 
-export function getOptionParsers(state: UserCurrentStates): OptionsParser[] {
-	if (state === "start") {
+export function getOptionParsers(user?: UserData): OptionsParser[] {
+	const parsers: OptionsParser[] = []
+	if (!user) {
 		return [
 			startParser,
 			durationParser,
@@ -15,7 +16,12 @@ export function getOptionParsers(state: UserCurrentStates): OptionsParser[] {
 			unknownMessageParser,
 		]
 	}
-	return []
+	if (!user.startTime) parsers.push(startTimeParser)
+	if (!user.endTime && !user.guardDuration)
+		parsers.push(endTimeParser, durationParser)
+	if (!user.nameList) parsers.push(nameListParser)
+	parsers.push(unknownMessageParser)
+	return parsers
 }
 const startParser: OptionsParser = async (msg, user) => {
 	if (msg.text === "/start") {
@@ -28,7 +34,7 @@ const startParser: OptionsParser = async (msg, user) => {
 	return false
 }
 const startTimeParser: OptionsParser = async (msg, user) => {
-	if (!msg.text || user.startTime) return false
+	if (!msg.text) return false
 	const regResults = timeRegex.exec(msg.text)
 	if (!regResults) return false
 	const time: Time = [+regResults[1], +regResults[2]]
@@ -50,7 +56,7 @@ const durationParser: OptionsParser = async (msg, user) => {
 	return true
 }
 const endTimeParser: OptionsParser = async (msg, user) => {
-	if (!msg.text || user.endTime) return false
+	if (!msg.text) return false
 	const regResults = timeRegex.exec(msg.text)
 	if (!regResults) return false
 	const time: Time = [+regResults[1], +regResults[2]]

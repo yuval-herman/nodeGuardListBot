@@ -30,12 +30,11 @@ const usersData = new Map<number, UserData>()
 function sendGuardList(user: CompleteUserData) {
 	callAPI("sendMessage", {
 		chat_id: user.id,
-		text:
-			"endTime" in user
+		text: user.endTime
 				? createList(user.startTime, user.endTime, user.nameList)
 				: createListWithDuration(
 						user.startTime,
-						user.guardDuration,
+					user.guardDuration!,
 						user.nameList
 				  ),
 		reply_markup: {
@@ -69,8 +68,7 @@ function verifyAllData(user: UserData): user is CompleteUserData {
 				user = {
 					id: message.from.id,
 					state: {
-						currentState: newUserState,
-						optionsParsers: getOptionParsers(newUserState),
+						optionsParsers: getOptionParsers(),
 					},
 				}
 				usersData.set(user.id, user)
@@ -78,10 +76,12 @@ function verifyAllData(user: UserData): user is CompleteUserData {
 			for (const parser of user.state.optionsParsers) {
 				if (await parser(message, user)) break
 			}
+
 			if (verifyAllData(user)) {
 				sendGuardList(user)
 				cleanUser(user)
 			}
+			user.state.optionsParsers = getOptionParsers(user)
 		}
 	}
 })()

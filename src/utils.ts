@@ -83,8 +83,8 @@ export function createList(
 export function cleanUser(user: UserData) {
 	user.endTime = undefined
 	user.startTime = undefined
+	user.guardDuration = undefined
 	user.nameList = undefined
-	user.state.currentState = "start"
 }
 export async function log_update(update: Update) {
 	if (update.message?.from) {

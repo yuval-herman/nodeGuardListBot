@@ -1,11 +1,9 @@
-export type UserCurrentStates = "start"
 export type OptionsParser = (
 	message: Message,
 	user: UserData
 ) => Promise<boolean>
 type UserState = {
 	optionsParsers: OptionsParser[]
-	currentState: UserCurrentStates
 }
 export type Time = [number, number]
 export interface UserData {
@@ -17,7 +15,7 @@ export interface UserData {
 	state: UserState
 }
 
-export type CompleteUserData = Omit<UserData, "endTime" | "guardDuration"> & {
+export type CompleteUserData = UserData & {
 	startTime: Time
 	nameList: string[]
 } & (
