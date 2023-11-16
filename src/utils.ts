@@ -132,3 +132,8 @@ export function shuffle<T>(array: T[]) {
 
 	return array
 }
+
+let last_id = 0
+export function UID() {
+	return last_id++
+}
