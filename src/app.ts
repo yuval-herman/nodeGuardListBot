@@ -12,24 +12,28 @@ import {
 	createListWithDuration,
 	log_update,
 } from "./utils"
+import { CONSTANTS } from "./constants.js"
 
 export const configs = {} as Configs
 try {
-	Object.assign(configs, JSON.parse(readFileSync("botConfigs.json", "utf-8")))
+	Object.assign(
+		configs,
+		JSON.parse(readFileSync(CONSTANTS.BOT_CONFIGS_FILE, "utf-8"))
+	)
 
 	if (!("token" in configs)) {
-		throw Error("No token in bot configs file (botConfigs.json)")
+		throw Error("No token in bot configs file")
 	}
 } catch (error) {
 	if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-		error.message = "bot configs file does not exist (botConfigs.json)"
+		error.message = "bot configs file does not exist"
 	}
 	throw error
 }
 export const TOKEN =
 	process.env.NODE_ENV !== "production" ? configs.testingToken! : configs.token
 
-const usersData = new Map<number, UserData>()
+export const usersData = new Map<number, UserData>()
 
 function sendGuardList(user: CompleteUserData): string {
 	const timedNameList = user.endTime

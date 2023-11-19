@@ -1,5 +1,7 @@
 import { readFile, writeFile } from "fs/promises"
 import { Time, UserData } from "./types"
+import { usersData } from "./app.js"
+import { CONSTANTS } from "./constants.js"
 
 export function timeFormat(time: Time) {
 	function digitFormat(digit: number) {
@@ -87,12 +89,15 @@ export function cleanUser(user: UserData) {
 	user.nameList = undefined
 }
 export async function log_update(update: Update) {
-	if (update.message?.from) {
-		const user = update.message.from
+	const user = update.message?.from
+	console.log(usersData)
+
+	if (user && !usersData.has(user.id)) {
 		let users: Record<number, User> = {}
 		try {
-			users = JSON.parse(await readFile("users.json", { encoding: "utf-8" }))
-			users[user.id] = user
+			users = JSON.parse(
+				await readFile(CONSTANTS.USERS_FILE, { encoding: "utf-8" })
+			)
 		} catch (error) {
 			// If the file does not exist this is fine, else we should rethrow
 			if (
@@ -105,11 +110,16 @@ export async function log_update(update: Update) {
 				throw error
 			}
 		}
-		writeFile("users.json", JSON.stringify(users), { flag: "w" })
+		users[user.id] = user
+		writeFile(CONSTANTS.USERS_FILE, JSON.stringify(users), { flag: "w" })
 	}
-	writeFile("log.log", JSON.stringify(update, null, 1) + "-".repeat(100), {
-		flag: "a",
-	})
+	writeFile(
+		CONSTANTS.VERBOSE_LOG_FILE,
+		JSON.stringify(update, null, 1) + "-".repeat(100),
+		{
+			flag: "a",
+		}
+	)
 }
 
 // https://stackoverflow.com/a/2450976

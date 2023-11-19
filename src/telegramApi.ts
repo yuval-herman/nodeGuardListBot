@@ -1,5 +1,6 @@
 import { writeFile } from "fs/promises"
 import { TOKEN, configs } from "./app"
+import { CONSTANTS } from "./constants.js"
 
 export async function callAPI(
 	method: string,
@@ -23,7 +24,7 @@ export async function getUpdates(): Promise<Update[]> {
 	if (resultObject.ok && Array.isArray(resultObject.result)) {
 		const updates: Update[] = resultObject.result
 		configs.last_update_id = updates.at(-1)?.update_id
-		await writeFile("botConfigs.json", JSON.stringify(configs))
+		await writeFile(CONSTANTS.BOT_CONFIGS_FILE, JSON.stringify(configs))
 		return updates
 	}
 	throw new Error("getUpdates error")
