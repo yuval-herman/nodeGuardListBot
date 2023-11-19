@@ -2,7 +2,7 @@ import { callAPI } from "./telegramApi.js"
 import { OptionsParser, Time, UserData } from "./types"
 import { timeFormat } from "./utils"
 
-export const timeRegex = /(\d{1,2}):(\d{1,2})/
+export const timeRegex = /^(\d{1,2}):(\d{1,2})$/
 
 export function getOptionParsers(user?: UserData): OptionsParser[] {
 	const parsers: OptionsParser[] = []
@@ -13,6 +13,21 @@ export function getOptionParsers(user?: UserData): OptionsParser[] {
 	if (!user?.nameList) parsers.push(nameListParser)
 	return parsers.concat(helpParser, unknownMessageParser) // add default parsers
 }
+
+async function sendCurrentState(user: UserData) {
+	const builder = ['רשמ"צ להכנת רשימת שמירה:']
+	builder.push((user.startTime ? "✅" : "❌") + " שעת התחלה")
+	builder.push(
+		(user.endTime || user.guardDuration ? "✅" : "❌") +
+			" שעת סוף או זמן בדקות"
+	)
+	builder.push((user.nameList ? "✅" : "❌") + " רשימת שמות")
+	await callAPI("sendMessage", {
+		chat_id: user.id,
+		text: builder.join("\n"),
+	})
+}
+
 const startParser: OptionsParser = async (msg, user) => {
 	if (msg.text === "/start") {
 		await callAPI("sendMessage", {
@@ -53,6 +68,7 @@ const startTimeParser: OptionsParser = async (msg, user) => {
 		text: `השמירה תתחיל ב-${timeFormat(time)}`,
 	})
 	user.startTime = time
+	sendCurrentState(user)
 	return true
 }
 const durationParser: OptionsParser = async (msg, user) => {
@@ -63,6 +79,7 @@ const durationParser: OptionsParser = async (msg, user) => {
 		text: `זמן השמירה נקבע ל-${minutes} דקות`,
 	})
 	user.guardDuration = minutes * 60
+	sendCurrentState(user)
 	return true
 }
 const endTimeParser: OptionsParser = async (msg, user) => {
@@ -82,6 +99,7 @@ const endTimeParser: OptionsParser = async (msg, user) => {
 		text: `השמירה תסתיים ב-${timeFormat(time)}`,
 	})
 	user.endTime = time
+	sendCurrentState(user)
 	return true
 }
 
@@ -93,6 +111,7 @@ const nameListParser: OptionsParser = async (msg, user) => {
 		text: `קיבלתי את רשימת השמות! ישנם ${nameList.length} שומרים.`,
 	})
 	user.nameList = nameList
+	sendCurrentState(user)
 	return true
 }
 
@@ -133,6 +152,5 @@ const unknownMessageParser: OptionsParser = async (msg, user) => {
 להוראות יותר מדוייקות שלח /help
 `,
 	})
-
 	return true
 }
