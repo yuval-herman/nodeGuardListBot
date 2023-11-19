@@ -13,6 +13,9 @@ export interface UserData {
 	nameList?: string[]
 	id: number
 	state: UserState
+	savedData: {
+		lastList?: string
+	}
 }
 
 export type CompleteUserData = UserData & {
@@ -29,5 +32,6 @@ export type CompleteUserData = UserData & {
 
 export interface Configs {
 	token: string
+	testingToken?: string
 	last_update_id?: number
 }

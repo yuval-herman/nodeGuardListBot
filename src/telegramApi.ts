@@ -1,12 +1,12 @@
 import { writeFile } from "fs/promises"
-import { configs } from "./app"
+import { TOKEN, configs } from "./app"
 
 export async function callAPI(
 	method: string,
 	options?: {}
 ): Promise<APIResult> {
 	return (
-		await fetch(`https://api.telegram.org/bot${configs.token}/${method}`, {
+		await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",

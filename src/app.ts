@@ -12,9 +12,11 @@ import {
 	createListWithDuration,
 	log_update,
 } from "./utils"
+
 export const configs = {} as Configs
 try {
 	Object.assign(configs, JSON.parse(readFileSync("botConfigs.json", "utf-8")))
+
 	if (!("token" in configs)) {
 		throw Error("No token in bot configs file (botConfigs.json)")
 	}
@@ -24,25 +26,29 @@ try {
 	}
 	throw error
 }
+export const TOKEN =
+	process.env.NODE_ENV !== "production" ? configs.testingToken! : configs.token
 
 const usersData = new Map<number, UserData>()
 
-function sendGuardList(user: CompleteUserData) {
+function sendGuardList(user: CompleteUserData): string {
+	const timedNameList = user.endTime
+		? createList(user.startTime, user.endTime, user.nameList)
+		: createListWithDuration(
+				user.startTime,
+				user.guardDuration!,
+				user.nameList
+		  )
 	callAPI("sendMessage", {
 		chat_id: user.id,
-		text: user.endTime
-				? createList(user.startTime, user.endTime, user.nameList)
-				: createListWithDuration(
-						user.startTime,
-					user.guardDuration!,
-						user.nameList
-				  ),
+		text: timedNameList,
 		reply_markup: {
 			inline_keyboard: [
 				[{ text: "ערוך", callback_data: callback_values.edit_sent_list }],
 			],
 		},
 	})
+	return timedNameList
 }
 
 function verifyAllData(user: UserData): user is CompleteUserData {
@@ -64,21 +70,20 @@ function verifyAllData(user: UserData): user is CompleteUserData {
 			if (!message || !message.from || !message.text) continue
 			let user = usersData.get(message.from.id)
 			if (!user) {
-				const newUserState = "start"
 				user = {
 					id: message.from.id,
 					state: {
 						optionsParsers: getOptionParsers(),
 					},
+					savedData: {},
 				}
 				usersData.set(user.id, user)
 			}
 			for (const parser of user.state.optionsParsers) {
 				if (await parser(message, user)) break
 			}
-
 			if (verifyAllData(user)) {
-				sendGuardList(user)
+				user.savedData.lastList = sendGuardList(user)
 				cleanUser(user)
 			}
 			user.state.optionsParsers = getOptionParsers(user)
