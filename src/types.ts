@@ -1,6 +1,7 @@
 export type OptionsParser = (
 	message: Message,
-	user: UserData
+	user: UserData,
+	dryRun?: boolean
 ) => Promise<boolean>
 type UserState = {
 	optionsParsers: OptionsParser[]

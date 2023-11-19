@@ -1,17 +1,16 @@
 import { callAPI } from "./telegramApi.js"
 import { OptionsParser, Time, UserData } from "./types"
-import { timeFormat, verifyAllData } from "./utils"
+import { cleanUser, timeFormat, verifyAllData } from "./utils"
 
 export const timeRegex = /^(\d{1,2}):(\d{1,2})$/
 
 export function getOptionParsers(user?: UserData): OptionsParser[] {
-	const parsers: OptionsParser[] = []
-	if (!user) parsers.push(startParser)
+	const parsers: OptionsParser[] = [startParser]
 	if (!user?.startTime) parsers.push(startTimeParser)
 	if (!user?.endTime && !user?.guardDuration)
 		parsers.push(endTimeParser, durationParser)
 	if (!user?.nameList) parsers.push(nameListParser)
-	return parsers.concat(helpParser, unknownMessageParser) // add default parsers
+	return parsers.concat(helpParser, clearParser, unknownMessageParser) // add default parsers
 }
 
 async function sendCurrentState(user: UserData) {
@@ -29,18 +28,20 @@ async function sendCurrentState(user: UserData) {
 	})
 }
 
-const startParser: OptionsParser = async (msg, user) => {
-	if (msg.text === "/start") {
+const startParser: OptionsParser = async (msg, user, dryRun) => {
+	if (msg.text !== "/start") return false
+	if (!dryRun) {
 		await callAPI("sendMessage", {
 			chat_id: user.id,
 			text: "שלום!\nאני בוט פשוט שיודע לעזור ברשימות שמירה.\nשלח לי רשימת שמות ושעת התחלה וסוף ואני יעשה את השאר.",
 		})
-		return true
 	}
-	return false
+	return true
 }
-const helpParser: OptionsParser = async (msg, user) => {
-	if (msg.text === "/help") {
+
+const helpParser: OptionsParser = async (msg, user, dryRun) => {
+	if (msg.text !== "/help") return false
+	if (!dryRun) {
 		await callAPI("sendMessage", {
 			parse_mode: "HTML",
 			chat_id: user.id,
@@ -55,68 +56,57 @@ const helpParser: OptionsParser = async (msg, user) => {
 3. או זמן שמירה בדקות או שעת סוף השמירה
 אין משמעות לסדר בו נשלחות ההודעות, ניתן לשלוח קודם את השעות ואח"כ את רשימת השמות או להפך.`,
 		})
-		return true
 	}
-	return false
-}
-const startTimeParser: OptionsParser = async (msg, user) => {
-	if (!msg.text) return false
-	const regResults = timeRegex.exec(msg.text)
-	if (!regResults) return false
-	const time: Time = [+regResults[1], +regResults[2]]
-	await callAPI("sendMessage", {
-		chat_id: user.id,
-		text: `השמירה תתחיל ב-${timeFormat(time)}`,
-	})
-	user.startTime = time
-	sendCurrentState(user)
 	return true
 }
-const durationParser: OptionsParser = async (msg, user) => {
-	if (!msg.text || !msg.text.match(/^\d+$/)) return false
-	const minutes = parseInt(msg.text)
-	await callAPI("sendMessage", {
-		chat_id: user.id,
-		text: `זמן השמירה נקבע ל-${minutes} דקות`,
-	})
-	user.guardDuration = minutes * 60
-	sendCurrentState(user)
+
+const clearParser: OptionsParser = async (msg, user, dryRun) => {
+	if (msg.text !== "/clear") return false
+	if (!dryRun) {
+		const result = await callAPI("sendMessage", {
+			chat_id: user.id,
+			text: "נתונים נמחקים...",
+		})
+		cleanUser(user)
+		setTimeout(() => {
+			callAPI("editMessageText", {
+				chat_id: user.id,
+				message_id: result.result.message_id,
+				text: "נתונים נמחקו!",
+			})
+		}, 500)
+	}
 	return true
 }
-const endTimeParser: OptionsParser = async (msg, user) => {
-	if (!msg.text) return false
-	const regResults = timeRegex.exec(msg.text)
-	if (!regResults) return false
-	const time: Time = [+regResults[1], +regResults[2]]
-	if (user.startTime?.every((v, i) => v === time[i])) {
+
+const unknownMessageParser: OptionsParser = async (msg, user, dryRun) => {
+	if (await endTimeParser(msg, user, true)) {
 		await callAPI("sendMessage", {
 			chat_id: user.id,
-			text: `כבר שלחת לי את שעת ההתחלה, עכשיו שלח לי את שעת הסיום`,
+			text: `נראה שניסית לשלוח שוב שעת שמירה למרות שאצלי כבר שמור שהשמירה תתחיל ב-${timeFormat(
+				user.startTime!
+			)} ו${
+				user.endTime
+					? `תגמר ב-${timeFormat(user.endTime)}`
+					: `תמשך ${user.guardDuration! / 60} דקות`
+			}.\nאם אלו לא הזמנים שרצית אתה יכול לשלוח /clear כדי למחוק אותם ולהתחיל מחדש.`,
+		})
+		return true
+	} else if (await durationParser(msg, user, true)) {
+		await callAPI("sendMessage", {
+			chat_id: user.id,
+			text: `כבר שלחת לי כמה זמן תמשך השמירה (${
+				user.guardDuration! / 60
+			}).\nאם אלו לא הזמנים שרצית אתה יכול לשלוח /clear כדי למחוק אותם ולהתחיל מחדש.`,
+		})
+		return true
+	} else if (await nameListParser(msg, user, true)) {
+		await callAPI("sendMessage", {
+			chat_id: user.id,
+			text: `כבר שלחת לי את רשימת השמות.\nאם זו לא הרשימה שרצית אתה יכול לשלוח /clear כדי למחוק אותה ולהתחיל מחדש.`,
 		})
 		return true
 	}
-	await callAPI("sendMessage", {
-		chat_id: user.id,
-		text: `השמירה תסתיים ב-${timeFormat(time)}`,
-	})
-	user.endTime = time
-	sendCurrentState(user)
-	return true
-}
-
-const nameListParser: OptionsParser = async (msg, user) => {
-	if (!msg.text || !msg.text.includes("\n")) return false
-	const nameList = msg.text.split("\n")
-	await callAPI("sendMessage", {
-		chat_id: user.id,
-		text: `קיבלתי את רשימת השמות! ישנם ${nameList.length} שומרים.`,
-	})
-	user.nameList = nameList
-	sendCurrentState(user)
-	return true
-}
-
-const unknownMessageParser: OptionsParser = async (msg, user) => {
 	await callAPI("sendMessage", {
 		parse_mode: "HTML",
 		chat_id: user.id,
@@ -153,5 +143,72 @@ const unknownMessageParser: OptionsParser = async (msg, user) => {
 להוראות יותר מדוייקות שלח /help
 `,
 	})
+	return true
+}
+
+const startTimeParser: OptionsParser = async (msg, user, dryRun) => {
+	if (!msg.text) return false
+	const regResults = timeRegex.exec(msg.text)
+	if (!regResults) return false
+	if (!dryRun) {
+		const time: Time = [+regResults[1], +regResults[2]]
+		await callAPI("sendMessage", {
+			chat_id: user.id,
+			text: `השמירה תתחיל ב-${timeFormat(time)}`,
+		})
+		user.startTime = time
+		sendCurrentState(user)
+	}
+	return true
+}
+
+const durationParser: OptionsParser = async (msg, user, dryRun) => {
+	if (!msg.text || !msg.text.match(/^\d+$/)) return false
+	if (!dryRun) {
+		const minutes = parseInt(msg.text)
+		await callAPI("sendMessage", {
+			chat_id: user.id,
+			text: `זמן השמירה נקבע ל-${minutes} דקות`,
+		})
+		user.guardDuration = minutes * 60
+		sendCurrentState(user)
+	}
+	return true
+}
+
+const endTimeParser: OptionsParser = async (msg, user, dryRun) => {
+	if (!msg.text) return false
+	const regResults = timeRegex.exec(msg.text)
+	if (!regResults) return false
+	if (!dryRun) {
+		const time: Time = [+regResults[1], +regResults[2]]
+		if (user.startTime?.every((v, i) => v === time[i])) {
+			await callAPI("sendMessage", {
+				chat_id: user.id,
+				text: `כבר שלחת לי את שעת ההתחלה, עכשיו שלח לי את שעת הסיום.\nאם אתה רוצה להתחיל מחדש אתה יכול לשלוח לי /clear כדי לאפס את התהליך.`,
+			})
+			return true
+		}
+		await callAPI("sendMessage", {
+			chat_id: user.id,
+			text: `השמירה תסתיים ב-${timeFormat(time)}`,
+		})
+		user.endTime = time
+		sendCurrentState(user)
+	}
+	return true
+}
+
+const nameListParser: OptionsParser = async (msg, user, dryRun) => {
+	if (!msg.text || !msg.text.includes("\n")) return false
+	if (!dryRun) {
+		const nameList = msg.text.split("\n")
+		await callAPI("sendMessage", {
+			chat_id: user.id,
+			text: `קיבלתי את רשימת השמות! ישנם ${nameList.length} שומרים.`,
+		})
+		user.nameList = nameList
+		sendCurrentState(user)
+	}
 	return true
 }
