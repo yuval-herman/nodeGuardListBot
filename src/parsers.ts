@@ -5,13 +5,13 @@ import { timeFormat } from "./utils"
 export const timeRegex = /(\d{1,2}):(\d{1,2})/
 
 export function getOptionParsers(user?: UserData): OptionsParser[] {
-	const parsers: OptionsParser[] = [helpParser, unknownMessageParser]
-	if (!user) parsers.unshift(startParser)
-	if (!user?.startTime) parsers.unshift(startTimeParser)
+	const parsers: OptionsParser[] = []
+	if (!user) parsers.push(startParser)
+	if (!user?.startTime) parsers.push(startTimeParser)
 	if (!user?.endTime && !user?.guardDuration)
-		parsers.unshift(endTimeParser, durationParser)
-	if (!user?.nameList) parsers.unshift(nameListParser)
-	return parsers
+		parsers.push(endTimeParser, durationParser)
+	if (!user?.nameList) parsers.push(nameListParser)
+	return parsers.concat(helpParser, unknownMessageParser) // add default parsers
 }
 const startParser: OptionsParser = async (msg, user) => {
 	if (msg.text === "/start") {
