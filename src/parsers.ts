@@ -1,6 +1,6 @@
 import { callAPI } from "./telegramApi.js"
 import { OptionsParser, Time, UserData } from "./types"
-import { timeFormat } from "./utils"
+import { timeFormat, verifyAllData } from "./utils"
 
 export const timeRegex = /^(\d{1,2}):(\d{1,2})$/
 
@@ -15,6 +15,7 @@ export function getOptionParsers(user?: UserData): OptionsParser[] {
 }
 
 async function sendCurrentState(user: UserData) {
+	if (verifyAllData(user)) return
 	const builder = ['רשמ"צ להכנת רשימת שמירה:']
 	builder.push((user.startTime ? "✅" : "❌") + " שעת התחלה")
 	builder.push(

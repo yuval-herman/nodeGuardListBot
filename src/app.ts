@@ -14,6 +14,7 @@ import {
 	fileLog,
 } from "./utils"
 import { CONSTANTS } from "./constants.js"
+import { verifyAllData } from "./utils.js"
 
 export const configs = {} as Configs
 try {
@@ -54,12 +55,6 @@ function sendGuardList(user: CompleteUserData): string {
 		},
 	})
 	return timedNameList
-}
-
-function verifyAllData(user: UserData): user is CompleteUserData {
-	return Boolean(
-		user.startTime && (user.endTime || user.guardDuration) && user.nameList
-	)
 }
 
 ;(async () => {
