@@ -5,7 +5,7 @@ export const callback_values = {
 	edit_sent_list: UID(),
 	shuffle_list: UID(),
 } as const
-const callback_values_reversed = Object.fromEntries(
+export const callback_values_reversed = Object.fromEntries(
 	Object.entries(callback_values).map((v) => v.reverse())
 )
 

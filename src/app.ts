@@ -11,6 +11,7 @@ import {
 	createList,
 	createListWithDuration,
 	log_update,
+	fileLog,
 } from "./utils"
 import { CONSTANTS } from "./constants.js"
 
@@ -65,7 +66,7 @@ function verifyAllData(user: UserData): user is CompleteUserData {
 	console.log(await callAPI("getMe"))
 	while (true) {
 		for (const update of await getUpdates()) {
-			log_update(update)
+			await log_update(update)
 			if (update.callback_query) {
 				handleCallbackQuery(update.callback_query)
 				continue
@@ -86,6 +87,7 @@ function verifyAllData(user: UserData): user is CompleteUserData {
 			for (const parser of user.state.optionsParsers) {
 				if (await parser(message, user)) break
 			}
+			fileLog("verbose", "USER_STATE", JSON.stringify(user))
 			if (verifyAllData(user)) {
 				user.savedData.lastList = sendGuardList(user)
 				cleanUser(user)

@@ -1,12 +1,22 @@
 import { writeFile } from "fs/promises"
 import { TOKEN, configs } from "./app"
 import { CONSTANTS } from "./constants.js"
+import { fileLog } from "./utils.js"
 
 export async function callAPI(
 	method: string,
-	options?: {}
+	options?: Record<string, any>
 ): Promise<APIResult> {
-	return (
+	fileLog(
+		"verbose",
+		"API_CALL",
+		method,
+		options ? JSON.stringify(options) : ""
+	)
+	if (method === "sendMessage" && options?.text) {
+		fileLog("short", "message", "BOT", options.text)
+	}
+	const result = await (
 		await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, {
 			method: "POST",
 			headers: {
@@ -15,6 +25,9 @@ export async function callAPI(
 			body: JSON.stringify(options),
 		})
 	).json()
+
+	fileLog("verbose", "API_RESULT", JSON.stringify(result))
+	return result
 }
 export async function getUpdates(): Promise<Update[]> {
 	const options: { offset?: number; timeout: number } = { timeout: 99999999 }

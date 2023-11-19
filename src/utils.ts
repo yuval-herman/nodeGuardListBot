@@ -1,7 +1,9 @@
+import { createWriteStream } from "fs"
 import { readFile, writeFile } from "fs/promises"
-import { Time, UserData } from "./types"
 import { usersData } from "./app.js"
+import { callback_values_reversed } from "./callbackQueryHandling.js"
 import { CONSTANTS } from "./constants.js"
+import { Time, UserData } from "./types"
 
 export function timeFormat(time: Time) {
 	function digitFormat(digit: number) {
@@ -88,10 +90,9 @@ export function cleanUser(user: UserData) {
 	user.guardDuration = undefined
 	user.nameList = undefined
 }
+
 export async function log_update(update: Update) {
 	const user = update.message?.from
-	console.log(usersData)
-
 	if (user && !usersData.has(user.id)) {
 		let users: Record<number, User> = {}
 		try {
@@ -113,13 +114,48 @@ export async function log_update(update: Update) {
 		users[user.id] = user
 		writeFile(CONSTANTS.USERS_FILE, JSON.stringify(users), { flag: "w" })
 	}
-	writeFile(
-		CONSTANTS.VERBOSE_LOG_FILE,
-		JSON.stringify(update, null, 1) + "-".repeat(100),
-		{
-			flag: "a",
-		}
+	const { message, callback_query } = update
+	if (message && message.from) {
+		fileLog(
+			"short",
+			"message",
+			message.from.username || message.from.first_name,
+			message.text ?? "NO TEXT IN MESSAGE"
+		)
+	} else if (callback_query) {
+		fileLog(
+			"short",
+			"callback",
+			callback_query.from.username || callback_query.from.first_name,
+			callback_query.data
+				? callback_values_reversed[callback_query.data]
+				: "NO DATA IN CALLBACK"
+		)
+	}
+}
+
+const LogFile = createWriteStream(CONSTANTS.LOG_FILE, {
+	flags: "a",
+	encoding: "utf-8",
+})
+
+const verboseLogFile = createWriteStream(CONSTANTS.VERBOSE_LOG_FILE, {
+	flags: "a",
+	encoding: "utf-8",
+})
+
+export function fileLog(type: "verbose" | "short", ...data: string[]) {
+	const stream = type === "verbose" ? verboseLogFile : LogFile
+	stream.write("\n")
+	stream.write(
+		new Date().toLocaleDateString("en-IL", {
+			hour: "2-digit",
+			minute: "2-digit",
+			second: "2-digit",
+		})
 	)
+	stream.write(" - ")
+	stream.write(data.map((item) => item.replace(/\n/g, "\\n")).join(" - "))
 }
 
 // https://stackoverflow.com/a/2450976
