@@ -97,7 +97,8 @@ export async function log_update(update: Update) {
 		let users: Record<number, User> = {}
 		try {
 			users = JSON.parse(
-				await readFile(CONSTANTS.USERS_FILE, { encoding: "utf-8" })
+				(await readFile(CONSTANTS.USERS_FILE, { encoding: "utf-8" })) ||
+					"{}"
 			)
 		} catch (error) {
 			// If the file does not exist this is fine, else we should rethrow
