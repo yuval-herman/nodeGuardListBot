@@ -1,4 +1,4 @@
-import { readFile } from "fs/promises"
+import { readFile, writeFile } from "fs/promises"
 import { callAPI } from "./telegramApi.js"
 import { OptionsParser, Time, UserData } from "./types"
 import { cleanUser, timeFormat, verifyAllData } from "./utils"
@@ -186,6 +186,15 @@ const unknownMessageParser: OptionsParser = async (msg, user, dryRun) => {
 להוראות יותר מדוייקות שלח /help
 `,
 	})
+	await writeFile(
+		"unknownMessages.log",
+		`\n${new Date().toLocaleDateString("en-IL", {
+			hour: "2-digit",
+			minute: "2-digit",
+			second: "2-digit",
+		})} - ${msg.text} - ${JSON.stringify(user)}`,
+		{ flag: "a" }
+	)
 	return true
 }
 
