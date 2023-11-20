@@ -237,14 +237,15 @@ const endTimeParser: OptionsParser = async (msg, user, dryRun) => {
 		if (user.startTime?.every((v, i) => v === time[i])) {
 			await callAPI("sendMessage", {
 				chat_id: user.id,
-				text: `כבר שלחת לי את שעת ההתחלה, עכשיו שלח לי את שעת הסיום.\nאם אתה רוצה להתחיל מחדש אתה יכול לשלוח לי /clear כדי לאפס את התהליך.`,
+				text: `השמירה תסתיים ב-${timeFormat(time)} ביום למחרת`,
 			})
-			return true
-		}
+			time[0] += 24
+		} else {
 		await callAPI("sendMessage", {
 			chat_id: user.id,
 			text: `השמירה תסתיים ב-${timeFormat(time)}`,
 		})
+		}
 		user.endTime = time
 		sendCurrentState(user)
 	}
