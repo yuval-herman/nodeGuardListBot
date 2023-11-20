@@ -59,6 +59,28 @@ function sendGuardList(user: CompleteUserData): string {
 
 ;(async () => {
 	console.log(await callAPI("getMe"))
+	const defaultCommands = [
+		{
+			command: "help",
+			description: "מציג עזרה לשימוש בבוט",
+		},
+		{
+			command: "clear",
+			description: "ניקוי המידע השמור כעת, התחלת שיחה מחדש",
+		},
+	]
+	await callAPI("setMyCommands", {
+		commands: defaultCommands,
+	})
+	await callAPI("setMyCommands", {
+		commands: defaultCommands.concat([
+			{
+				command: "broadcast",
+				description: "משדר הודעה לכל המשתמשים",
+			},
+		]),
+		scope: { type: "chat", chat_id: configs.adminId },
+	})
 	while (true) {
 		for (const update of await getUpdates()) {
 			await log_update(update)
@@ -73,10 +95,11 @@ function sendGuardList(user: CompleteUserData): string {
 				user = {
 					id: message.from.id,
 					state: {
-						optionsParsers: getOptionParsers(),
+						optionsParsers: [],
 					},
 					savedData: {},
 				}
+				user.state.optionsParsers = getOptionParsers(user)
 				usersData.set(user.id, user)
 			}
 			for (const parser of user.state.optionsParsers) {

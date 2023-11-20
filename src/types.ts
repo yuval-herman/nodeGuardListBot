@@ -35,4 +35,5 @@ export interface Configs {
 	token: string
 	testingToken?: string
 	last_update_id?: number
+	adminId: number
 }

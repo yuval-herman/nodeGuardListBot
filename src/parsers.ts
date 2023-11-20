@@ -1,6 +1,9 @@
+import { readFile } from "fs/promises"
 import { callAPI } from "./telegramApi.js"
 import { OptionsParser, Time, UserData } from "./types"
 import { cleanUser, timeFormat, verifyAllData } from "./utils"
+import { CONSTANTS } from "./constants.js"
+import { configs } from "./app.js"
 
 export const timeRegex = /^(\d{1,2}):(\d{1,2})$/
 
@@ -10,6 +13,7 @@ export function getOptionParsers(user?: UserData): OptionsParser[] {
 	if (!user?.endTime && !user?.guardDuration)
 		parsers.push(endTimeParser, durationParser)
 	if (!user?.nameList) parsers.push(nameListParser)
+	if (user?.id === configs.adminId) parsers.push(broadcastParser)
 	return parsers.concat(helpParser, clearParser, unknownMessageParser) // add default parsers
 }
 
@@ -75,6 +79,45 @@ const clearParser: OptionsParser = async (msg, user, dryRun) => {
 				text: "נתונים נמחקו!",
 			})
 		}, 500)
+	}
+	return true
+}
+const broadcastParser: OptionsParser = async (msg, user, dryRun) => {
+	if (!msg.text?.startsWith("/broadcast")) return false
+	if (!dryRun) {
+		const message = msg.text.slice(11)
+
+		let users: User[]
+		const file = await readFile(CONSTANTS.USERS_FILE, "utf-8")
+
+		try {
+			users = Object.values(JSON.parse(file))
+		} catch (error) {
+			await callAPI("sendMessage", {
+				chat_id: user.id,
+				text: "תקלה בשליחת ההודעה\n" + error,
+			})
+			return true
+		}
+
+		const successfulUsers = (
+			await Promise.allSettled(
+				users.map(async (user) =>
+					callAPI("sendMessage", { chat_id: user.id, text: message })
+				)
+			)
+		)
+			.map((res) => res.status === "fulfilled" && res.value.result.chat.id)
+			.filter(Boolean)
+
+		await callAPI("sendMessage", {
+			chat_id: user.id,
+			text:
+				"הודעה נשלחה לכל המשתמשים הבאים:\n" +
+				successfulUsers
+					.map((id) => users.find((user) => user.id === id))
+					.map((user) => user!.username || user!.first_name),
+		})
 	}
 	return true
 }
