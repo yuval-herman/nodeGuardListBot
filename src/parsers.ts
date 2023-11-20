@@ -1,11 +1,12 @@
 import { readFile, writeFile } from "fs/promises"
+import { configs } from "./app.js"
+import { CONSTANTS } from "./constants.js"
 import { callAPI } from "./telegramApi.js"
 import { OptionsParser, Time, UserData } from "./types"
 import { cleanUser, timeFormat, verifyAllData } from "./utils"
-import { CONSTANTS } from "./constants.js"
-import { configs } from "./app.js"
 
-export const timeRegex = /^(\d{1,2}):(\d{1,2})$/
+const timeRegex = /^(\d{1,2}):(\d{1,2})$/
+const globalTimeRegex = /(\d{1,2}):(\d{1,2})/g
 
 export function getOptionParsers(user?: UserData): OptionsParser[] {
 	const parsers: OptionsParser[] = [startParser]
@@ -14,7 +15,12 @@ export function getOptionParsers(user?: UserData): OptionsParser[] {
 		parsers.push(endTimeParser, durationParser)
 	if (!user?.nameList) parsers.push(nameListParser)
 	if (user?.id === configs.adminId) parsers.push(broadcastParser)
-	return parsers.concat(helpParser, clearParser, unknownMessageParser) // add default parsers
+	return parsers.concat(
+		helpParser,
+		clearParser,
+		smartParser,
+		unknownMessageParser
+	) // add default parsers
 }
 
 async function sendCurrentState(user: UserData) {
@@ -120,6 +126,66 @@ const broadcastParser: OptionsParser = async (msg, user, dryRun) => {
 		})
 	}
 	return true
+}
+
+const smartParser: OptionsParser = async (msg, user, dryRun) => {
+	if (!msg.text) return false
+	const endMessage =
+		"\nאתה יכול לשלוח /help כדי לראות את הפורמט הנכון לשליחת הודעות.\nאם זה לא מה שהתכוונת, שלח לי /clear כדי לנקות את הנתונים"
+	const regResults = Array.from(msg.text.matchAll(globalTimeRegex))
+	if (regResults.length === 2) {
+		user.startTime = [+regResults[0][1], +regResults[0][2]]
+		user.endTime = [+regResults[1][1], +regResults[1][2]]
+		await sendMessage(
+			`קבעתי שהשמירה תתחיל בשעה ${timeFormat(
+				user.startTime
+			)} ותסתיים בשעה ${timeFormat(
+				user.endTime
+			)}.${endMessage} ותרשום לי את שעת תחילת השמירה ושעת הסיום בשתי הודעות נפרדות.`
+		)
+		if (user.endTime.every((item, i) => item === user.startTime![i])) {
+			user.endTime[0] += 24
+		}
+		return true
+	}
+	if (regResults.length === 1) {
+		if (msg.text.includes("התחלה")) {
+			user.startTime = [+regResults[0][1], +regResults[0][2]]
+			await sendMessage(
+				`קבעתי שהשמירה תתחיל בשעה ${timeFormat(
+					user.startTime
+				)}.${endMessage} ותתחיל מחדש.`
+			)
+			return true
+		} else if (["סיום", "סוף"].some((str) => msg.text?.includes(str))) {
+			user.endTime = [+regResults[0][1], +regResults[0][2]]
+			await sendMessage(
+				`קבעתי שהשמירה תסתיים בשעה ${timeFormat(
+					user.endTime
+				)}.${endMessage} ותתחיל מחדש.`
+			)
+			return true
+		}
+	}
+	const words = msg.text.split(" ")
+	if (words.length >= 4) {
+		user.nameList = words
+		await sendMessage(
+			`הגדרתי את רשימת השמות כך:\n${user.nameList.join(
+				"\n"
+			)}.${endMessage} ותתחיל מחדש.`
+		)
+		return true
+	}
+
+	return false
+	async function sendMessage(text: string) {
+		await callAPI("sendMessage", {
+			chat_id: user.id,
+			text: "ההודעה ששלחת אינה רשומה בפורמט שאני מבין.",
+		})
+		await callAPI("sendMessage", { chat_id: user.id, text })
+	}
 }
 
 const unknownMessageParser: OptionsParser = async (msg, user, dryRun) => {
@@ -241,10 +307,10 @@ const endTimeParser: OptionsParser = async (msg, user, dryRun) => {
 			})
 			time[0] += 24
 		} else {
-		await callAPI("sendMessage", {
-			chat_id: user.id,
-			text: `השמירה תסתיים ב-${timeFormat(time)}`,
-		})
+			await callAPI("sendMessage", {
+				chat_id: user.id,
+				text: `השמירה תסתיים ב-${timeFormat(time)}`,
+			})
 		}
 		user.endTime = time
 		sendCurrentState(user)
