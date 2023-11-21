@@ -121,9 +121,6 @@ export const smartParser: OptionsParser = async (msg, user, dryRun) => {
 		await sendMessage(
 			`קבעתי שהשמירה תתחיל בשעה ${user.startTime} ותסתיים בשעה ${user.endTime}.${endMessage} ותרשום לי את שעת תחילת השמירה ושעת הסיום בשתי הודעות נפרדות.`
 		)
-		if (user.endTime.equals(user.startTime)) {
-			user.endTime.hour += 24
-		}
 		return true
 	}
 	if (timeArray.length === 1) {
@@ -279,7 +276,6 @@ export const endTimeParser: OptionsParser = async (msg, user, dryRun) => {
 				chat_id: user.id,
 				text: `השמירה תסתיים ב-${time} ביום למחרת`,
 			})
-			time.hour += 24
 		} else {
 			await callAPI("sendMessage", {
 				chat_id: user.id,

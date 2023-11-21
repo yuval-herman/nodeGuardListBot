@@ -59,12 +59,14 @@ export class UserData {
 		return this._startTime
 	}
 	public set startTime(value: Time | undefined) {
+		if (this.endTime && value?.equals(this.endTime)) this.endTime.hour += 24
 		this._startTime = value
 	}
 	public get endTime(): Time | undefined {
 		return this._endTime
 	}
 	public set endTime(value: Time | undefined) {
+		if (this.startTime && value?.equals(this.startTime)) value.hour += 24
 		this._endTime = value
 	}
 	public get guardDuration(): number | undefined {
