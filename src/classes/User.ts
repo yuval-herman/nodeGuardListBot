@@ -11,7 +11,8 @@ import {
 	startTimeParser,
 	unknownMessageParser,
 } from "../parsers.js"
-import { OptionsParser, Time } from "../types.js"
+import { OptionsParser } from "../types.js"
+import { Time } from "./Time.js"
 
 export class UserData {
 	id: number

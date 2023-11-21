@@ -2,18 +2,12 @@ import { createWriteStream } from "fs"
 import { readFile, writeFile } from "fs/promises"
 import { usersData } from "./app.js"
 import { callback_values_reversed } from "./callbackQueryHandling.js"
+import { Time } from "./classes/Time.js"
 import { CONSTANTS } from "./constants.js"
-import { Time } from "./types"
 
-export function timeFormat(time: Time) {
-	function digitFormat(digit: number) {
-		return digit.toString().padStart(2, "0")
-	}
-	return `${digitFormat(time[0])}:${digitFormat(time[1])}`
-}
 function calculateTime(startTime: Time, endTime: Time, divider: number) {
-	const startTimeSeconds = timeToSeconds(startTime)
-	const endTimeSeconds = timeToSeconds(endTime)
+	const startTimeSeconds = startTime.toSeconds()
+	const endTimeSeconds = endTime.toSeconds()
 	let guardSeconds = (endTimeSeconds - startTimeSeconds) / divider
 	let multiDay = false
 
@@ -29,30 +23,19 @@ function calculateTime(startTime: Time, endTime: Time, divider: number) {
 		multiDay,
 	}
 }
-function secondsToTime(timeInSeconds: number): Time {
-	return [
-		Math.floor(timeInSeconds / (60 * 60)),
-		Math.floor((timeInSeconds / 60) % 60),
-	]
-}
-function timeToSeconds(time: Time): number {
-	return time[0] * (60 * 60) + time[1] * 60
-}
 
 export function createListWithDuration(
 	startTime: Time,
 	duration: number,
 	nameList: string[]
 ): string {
-	const startTimeSeconds = timeToSeconds(startTime)
+	const startTimeSeconds = startTime.toSeconds()
 	let timedListString = ""
 	let guardTime = startTimeSeconds
 
 	for (let index = 0; index < nameList.length; index++) {
-		timedListString += `${timeFormat(
-			secondsToTime(
-				guardTime > 24 * 60 * 60 ? guardTime - 24 * 60 * 60 : guardTime
-			)
+		timedListString += `${Time.fromSeconds(
+			guardTime > 24 * 60 * 60 ? guardTime - 24 * 60 * 60 : guardTime
 		)} ${nameList[index]}\n`
 		guardTime += duration
 	}
@@ -75,10 +58,8 @@ export function createList(
 		guardTime < endTimeSeconds + (multiDay ? 24 * 60 * 60 : 0);
 		guardTime += guardSeconds
 	) {
-		timedListString += `${timeFormat(
-			secondsToTime(
-				guardTime > 24 * 60 * 60 ? guardTime - 24 * 60 * 60 : guardTime
-			)
+		timedListString += `${Time.fromSeconds(
+			guardTime > 24 * 60 * 60 ? guardTime - 24 * 60 * 60 : guardTime
 		)} ${nameList[nameIndex]}\n`
 		nameIndex++
 	}

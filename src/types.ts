@@ -6,8 +6,6 @@ export type OptionsParser = (
 	dryRun?: boolean
 ) => Promise<boolean>
 
-export type Time = [number, number]
-
 export interface Configs {
 	token: string
 	testingToken?: string
