@@ -3,18 +3,16 @@ import {
 	callback_values,
 	handleCallbackQuery,
 } from "./callbackQueryHandling.js"
-import { getOptionParsers } from "./parsers"
+import { UserData, UserDataFull } from "./classes/User.js"
+import { CONSTANTS } from "./constants.js"
 import { callAPI, getUpdates } from "./telegramApi"
-import { CompleteUserData, Configs, UserData } from "./types"
+import { Configs } from "./types"
 import {
-	cleanUser,
 	createList,
 	createListWithDuration,
-	log_update,
 	fileLog,
+	log_update,
 } from "./utils"
-import { CONSTANTS } from "./constants.js"
-import { verifyAllData } from "./utils.js"
 
 export const configs = {} as Configs
 try {
@@ -37,7 +35,7 @@ export const TOKEN =
 
 export const usersData = new Map<number, UserData>()
 
-function sendGuardList(user: CompleteUserData): string {
+function sendGuardList(user: UserDataFull): string {
 	const timedNameList = user.endTime
 		? createList(user.startTime, user.endTime, user.nameList)
 		: createListWithDuration(
@@ -104,25 +102,17 @@ function sendGuardList(user: CompleteUserData): string {
 			if (!message || !message.from || !message.text) continue
 			let user = usersData.get(message.from.id)
 			if (!user) {
-				user = {
-					id: message.from.id,
-					state: {
-						optionsParsers: [],
-					},
-					savedData: {},
-				}
-				user.state.optionsParsers = getOptionParsers(user)
+				user = new UserData(message.from.id)
 				usersData.set(user.id, user)
 			}
-			for (const parser of user.state.optionsParsers) {
+			for (const parser of user.getOptionsParsers()) {
 				if (await parser(message, user)) break
 			}
 			fileLog("verbose", "USER_STATE", JSON.stringify(user))
-			if (verifyAllData(user)) {
-				user.savedData.lastList = sendGuardList(user)
-				cleanUser(user)
+			if (user.isNameListDataComplete()) {
+				sendGuardList(user)
+				user.cleanNameListData()
 			}
-			user.state.optionsParsers = getOptionParsers(user)
 		}
 	}
 })()

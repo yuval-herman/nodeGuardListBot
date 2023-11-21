@@ -1,30 +1,15 @@
 import { readFile, writeFile } from "fs/promises"
-import { configs } from "./app.js"
+import { UserData } from "./classes/User.js"
 import { CONSTANTS } from "./constants.js"
 import { callAPI } from "./telegramApi.js"
-import { OptionsParser, Time, UserData } from "./types"
-import { cleanUser, timeFormat, verifyAllData } from "./utils"
+import { OptionsParser, Time } from "./types"
+import { timeFormat } from "./utils"
 
 const timeRegex = /^(\d{1,2}):(\d{1,2})$/
 const globalTimeRegex = /(\d{1,2}):(\d{1,2})/g
 
-export function getOptionParsers(user?: UserData): OptionsParser[] {
-	const parsers: OptionsParser[] = [startParser]
-	if (!user?.startTime) parsers.push(startTimeParser)
-	if (!user?.endTime && !user?.guardDuration)
-		parsers.push(endTimeParser, durationParser)
-	if (!user?.nameList) parsers.push(nameListParser)
-	if (user?.id === configs.adminId) parsers.push(broadcastParser)
-	return parsers.concat(
-		helpParser,
-		clearParser,
-		smartParser,
-		unknownMessageParser
-	) // add default parsers
-}
-
 async function sendCurrentState(user: UserData) {
-	if (verifyAllData(user)) return
+	if (user.isNameListDataComplete()) return
 	const builder = ['רשמ"צ להכנת רשימת שמירה:']
 	builder.push((user.startTime ? "✅" : "❌") + " שעת התחלה")
 	builder.push(
@@ -38,7 +23,7 @@ async function sendCurrentState(user: UserData) {
 	})
 }
 
-const startParser: OptionsParser = async (msg, user, dryRun) => {
+export const startParser: OptionsParser = async (msg, user, dryRun) => {
 	if (msg.text !== "/start") return false
 	if (!dryRun) {
 		await callAPI("sendMessage", {
@@ -49,7 +34,7 @@ const startParser: OptionsParser = async (msg, user, dryRun) => {
 	return true
 }
 
-const helpParser: OptionsParser = async (msg, user, dryRun) => {
+export const helpParser: OptionsParser = async (msg, user, dryRun) => {
 	if (msg.text !== "/help") return false
 	if (!dryRun) {
 		await callAPI("sendMessage", {
@@ -70,14 +55,14 @@ const helpParser: OptionsParser = async (msg, user, dryRun) => {
 	return true
 }
 
-const clearParser: OptionsParser = async (msg, user, dryRun) => {
+export const clearParser: OptionsParser = async (msg, user, dryRun) => {
 	if (msg.text !== "/clear") return false
 	if (!dryRun) {
 		const result = await callAPI("sendMessage", {
 			chat_id: user.id,
 			text: "נתונים נמחקים...",
 		})
-		cleanUser(user)
+		user.cleanNameListData()
 		setTimeout(() => {
 			callAPI("editMessageText", {
 				chat_id: user.id,
@@ -88,7 +73,7 @@ const clearParser: OptionsParser = async (msg, user, dryRun) => {
 	}
 	return true
 }
-const broadcastParser: OptionsParser = async (msg, user, dryRun) => {
+export const broadcastParser: OptionsParser = async (msg, user, dryRun) => {
 	if (!msg.text?.startsWith("/broadcast")) return false
 	if (!dryRun) {
 		const message = msg.text.slice(11)
@@ -128,7 +113,7 @@ const broadcastParser: OptionsParser = async (msg, user, dryRun) => {
 	return true
 }
 
-const smartParser: OptionsParser = async (msg, user, dryRun) => {
+export const smartParser: OptionsParser = async (msg, user, dryRun) => {
 	if (!msg.text) return false
 	const endMessage =
 		"\nאתה יכול לשלוח /help כדי לראות את הפורמט הנכון לשליחת הודעות.\nאם זה לא מה שהתכוונת, שלח לי /clear כדי לנקות את הנתונים"
@@ -188,7 +173,11 @@ const smartParser: OptionsParser = async (msg, user, dryRun) => {
 	}
 }
 
-const unknownMessageParser: OptionsParser = async (msg, user, dryRun) => {
+export const unknownMessageParser: OptionsParser = async (
+	msg,
+	user,
+	dryRun
+) => {
 	if (await endTimeParser(msg, user, true)) {
 		await callAPI("sendMessage", {
 			chat_id: user.id,
@@ -264,9 +253,10 @@ const unknownMessageParser: OptionsParser = async (msg, user, dryRun) => {
 	return true
 }
 
-const startTimeParser: OptionsParser = async (msg, user, dryRun) => {
+export const startTimeParser: OptionsParser = async (msg, user, dryRun) => {
 	if (!msg.text) return false
 	const regResults = timeRegex.exec(msg.text)
+
 	if (!regResults) return false
 	if (!dryRun) {
 		const time: Time = [+regResults[1], +regResults[2]]
@@ -280,7 +270,7 @@ const startTimeParser: OptionsParser = async (msg, user, dryRun) => {
 	return true
 }
 
-const durationParser: OptionsParser = async (msg, user, dryRun) => {
+export const durationParser: OptionsParser = async (msg, user, dryRun) => {
 	if (!msg.text || !msg.text.match(/^\d+$/)) return false
 	if (!dryRun) {
 		const minutes = parseInt(msg.text)
@@ -294,7 +284,7 @@ const durationParser: OptionsParser = async (msg, user, dryRun) => {
 	return true
 }
 
-const endTimeParser: OptionsParser = async (msg, user, dryRun) => {
+export const endTimeParser: OptionsParser = async (msg, user, dryRun) => {
 	if (!msg.text) return false
 	const regResults = timeRegex.exec(msg.text)
 	if (!regResults) return false
@@ -318,7 +308,7 @@ const endTimeParser: OptionsParser = async (msg, user, dryRun) => {
 	return true
 }
 
-const nameListParser: OptionsParser = async (msg, user, dryRun) => {
+export const nameListParser: OptionsParser = async (msg, user, dryRun) => {
 	if (!msg.text || !msg.text.includes("\n")) return false
 	if (!dryRun) {
 		const nameList = msg.text.split("\n")

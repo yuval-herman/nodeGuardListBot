@@ -3,7 +3,7 @@ import { readFile, writeFile } from "fs/promises"
 import { usersData } from "./app.js"
 import { callback_values_reversed } from "./callbackQueryHandling.js"
 import { CONSTANTS } from "./constants.js"
-import { CompleteUserData, Time, UserData } from "./types"
+import { Time } from "./types"
 
 export function timeFormat(time: Time) {
 	function digitFormat(digit: number) {
@@ -83,12 +83,6 @@ export function createList(
 		nameIndex++
 	}
 	return timedListString
-}
-export function cleanUser(user: UserData) {
-	user.endTime = undefined
-	user.startTime = undefined
-	user.guardDuration = undefined
-	user.nameList = undefined
 }
 
 export async function log_update(update: Update) {
@@ -183,9 +177,4 @@ export function shuffle<T>(array: T[]) {
 let last_id = 0
 export function UID() {
 	return last_id++
-}
-export function verifyAllData(user: UserData): user is CompleteUserData {
-	return Boolean(
-		user.startTime && (user.endTime || user.guardDuration) && user.nameList
-	)
 }

@@ -33,7 +33,7 @@ export let getUpdates =
 		? getUpdatesWebhook
 		: getUpdatesLongPoll
 
-class UpdatesEventEmmiter {
+class UpdatesEventEmitter {
 	listeners: ((update: Update[]) => void)[] = []
 	updates: Update[] = []
 	newUpdate(update: Update) {
@@ -51,7 +51,7 @@ class UpdatesEventEmmiter {
 	}
 }
 
-const updatesEventEmmiter = new UpdatesEventEmmiter()
+const updatesEventEmitter = new UpdatesEventEmitter()
 
 if (process.env.NODE_ENV === "production") {
 	console.log("using webhook server")
@@ -73,7 +73,7 @@ if (process.env.NODE_ENV === "production") {
 					console.error(err.stack)
 				})
 				.on("end", () => {
-					updatesEventEmmiter.newUpdate(
+					updatesEventEmitter.newUpdate(
 						JSON.parse(Buffer.concat(body).toString())
 					)
 				})
@@ -84,7 +84,10 @@ if (process.env.NODE_ENV === "production") {
 
 async function getUpdatesWebhook(): Promise<Update[]> {
 	return new Promise<Update[]>((resolve, reject) => {
-		updatesEventEmmiter.onUpdate(resolve)
+		updatesEventEmitter.onUpdate((update) => {
+			fileLog("verbose", "WEBHOOK", JSON.stringify(update))
+			return resolve(update)
+		})
 	})
 }
 
