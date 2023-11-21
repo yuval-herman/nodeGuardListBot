@@ -59,6 +59,18 @@ function sendGuardList(user: CompleteUserData): string {
 
 ;(async () => {
 	console.log(await callAPI("getMe"))
+	if (process.env.NODE_ENV === "production") {
+		if (!configs.webhookUrl) {
+			throw new Error("no webhook url in config file")
+		}
+		callAPI("setWebhook", {
+			url: configs.webhookUrl,
+			secret_token: configs.token.replace(":", ""),
+			drop_pending_updates: true,
+		}).then(console.log)
+	} else {
+		callAPI("deleteWebhook").then(console.log)
+	}
 	const defaultCommands = [
 		{
 			command: "help",

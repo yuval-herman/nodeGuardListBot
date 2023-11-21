@@ -36,4 +36,5 @@ export interface Configs {
 	testingToken?: string
 	last_update_id?: number
 	adminId: number
+	webhookUrl?: string
 }

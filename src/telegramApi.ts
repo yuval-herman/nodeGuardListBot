@@ -1,7 +1,6 @@
-import { writeFile } from "fs/promises"
 import { TOKEN, configs } from "./app"
-import { CONSTANTS } from "./constants.js"
 import { fileLog } from "./utils.js"
+import { createServer } from "http"
 
 export async function callAPI(
 	method: string,
@@ -29,7 +28,67 @@ export async function callAPI(
 	fileLog("verbose", "API_RESULT", JSON.stringify(result))
 	return result
 }
-export async function getUpdates(): Promise<Update[]> {
+export let getUpdates =
+	process.env.NODE_ENV === "production"
+		? getUpdatesWebhook
+		: getUpdatesLongPoll
+
+class UpdatesEventEmmiter {
+	listeners: ((update: Update[]) => void)[] = []
+	updates: Update[] = []
+	newUpdate(update: Update) {
+		const listener = this.listeners.pop()
+		if (listener) {
+			listener([update])
+		} else this.updates.push(update)
+	}
+	onUpdate(callback: (update: Update[]) => void) {
+		const update = this.updates.pop()
+		if (update) {
+			callback([update])
+		}
+		this.listeners.push(callback)
+	}
+}
+
+const updatesEventEmmiter = new UpdatesEventEmmiter()
+
+if (process.env.NODE_ENV === "production") {
+	console.log("using webhook server")
+	createServer((request, response) => {
+		const { method, headers } = request
+		if (
+			headers["x-telegram-bot-api-secret-token"] !==
+			configs.token.replace(":", "")
+		)
+			return
+
+		if (method === "POST") {
+			const body: any[] = []
+			request
+				.on("data", (chunk) => {
+					body.push(chunk)
+				})
+				.on("error", (err) => {
+					console.error(err.stack)
+				})
+				.on("end", () => {
+					updatesEventEmmiter.newUpdate(
+						JSON.parse(Buffer.concat(body).toString())
+					)
+				})
+			response.end()
+		}
+	}).listen(8443)
+}
+
+async function getUpdatesWebhook(): Promise<Update[]> {
+	return new Promise<Update[]>((resolve, reject) => {
+		updatesEventEmmiter.onUpdate(resolve)
+	})
+}
+
+async function getUpdatesLongPoll(): Promise<Update[]> {
 	const options: { offset?: number; timeout: number } = { timeout: 99999999 }
 	if (configs.last_update_id) options.offset = configs.last_update_id + 1
 
@@ -37,7 +96,6 @@ export async function getUpdates(): Promise<Update[]> {
 	if (resultObject.ok && Array.isArray(resultObject.result)) {
 		const updates: Update[] = resultObject.result
 		configs.last_update_id = updates.at(-1)?.update_id
-		await writeFile(CONSTANTS.BOT_CONFIGS_FILE, JSON.stringify(configs))
 		return updates
 	}
 	throw new Error("getUpdates error")
