@@ -1,11 +1,11 @@
-import { Time } from "./classes/Time.js"
+import { usersData } from "./app.js"
 import { callAPI } from "./telegramApi.js"
 import { UID, createList, shuffle } from "./utils.js"
 
 export const callback_values = {
 	edit_sent_list: UID(),
 	shuffle_list: UID(),
-	split_list: UID(),
+	add_list_round: UID(),
 } as const
 export const callback_values_reversed = Object.fromEntries(
 	Object.entries(callback_values).map((v) => v.reverse())
@@ -21,16 +21,28 @@ const nameListReplyMarkup = {
 		],
 		[
 			{
-				text: "חלק לסבבים",
-				callback_data: callback_values.split_list,
+				text: "הוסף סבב",
+				callback_data: callback_values.add_list_round,
 			},
 		],
 	],
 }
 
 export function handleCallbackQuery(callbackQuery: CallbackQuery) {
-	callAPI("answerCallbackQuery", { callback_query_id: callbackQuery.id })
-	if (!callbackQuery.data || !callbackQuery.message) return
+	const user = usersData.get(callbackQuery.from.id)
+	if (
+		!callbackQuery.data ||
+		!callbackQuery.message ||
+		!user ||
+		!user.savedListData
+	) {
+		callAPI("answerCallbackQuery", {
+			callback_query_id: callbackQuery.id,
+			text: "קרתה תקלה!\nאם ההודעה ששלחת ישנה אני כבר לא יכול לערוך אותה...",
+		})
+		return
+	}
+
 	const action: keyof typeof callback_values =
 		callback_values_reversed[callbackQuery.data]
 	if (action === "edit_sent_list") {
@@ -40,57 +52,50 @@ export function handleCallbackQuery(callbackQuery: CallbackQuery) {
 			reply_markup: nameListReplyMarkup,
 		})
 	} else if (action === "shuffle_list") {
-		let names: string[], times: Time[]
-		try {
-			;({ names, times } = extractDataFromMessage(
-				callbackQuery.message.text!
-			))
-		} catch (error) {
-			console.error(error)
-			return
-		}
-		shuffle(names)
-		const shuffled = times.map((time, i) => `${time} ${names[i]}`)
+		let list: string
+		const { originalNameList, startTime, modifiedNameList } =
+			user.savedListData
+		const nameList = modifiedNameList ?? originalNameList
+		shuffle(nameList)
+		if ("endTime" in user.savedListData)
+			list = createList(startTime, user.savedListData.endTime, nameList)
+		else
+			list = createList(
+				startTime,
+				user.savedListData.guardDuration,
+				nameList
+			)
 
 		callAPI("editMessageText", {
 			chat_id: callbackQuery.from.id,
 			message_id: callbackQuery.message.message_id,
-			text: shuffled.join("\n"),
+			text: list,
 			reply_markup: nameListReplyMarkup,
 		})
-	} else if (action === "split_list") {
-		let names: string[], times: Time[]
-		try {
-			;({ names, times } = extractDataFromMessage(
-				callbackQuery.message.text!
-			))
-		} catch (error) {
-			console.error(error)
-			return
+	} else if (action === "add_list_round") {
+		const { originalNameList, startTime } = user.savedListData
+		let list: string
+		user.savedListData.modifiedNameList = (
+			user.savedListData.modifiedNameList ?? originalNameList
+		).concat(originalNameList)
+		if ("endTime" in user.savedListData) {
+			list = createList(
+				startTime,
+				user.savedListData.endTime,
+				user.savedListData.modifiedNameList
+			)
+		} else {
+			list = createList(
+				startTime,
+				user.savedListData.guardDuration,
+				user.savedListData.modifiedNameList
+			)
 		}
-		const guardTime = times[1].toSeconds() - times[0].toSeconds()
-
 		callAPI("editMessageText", {
 			chat_id: callbackQuery.from.id,
 			message_id: callbackQuery.message.message_id,
-			text: createListWithDuration(
-				times[0],
-				Math.floor(guardTime / 2),
-				names.concat(names)
-			),
+			text: list,
 			reply_markup: nameListReplyMarkup,
 		})
 	}
-}
-
-function extractDataFromMessage(msgText: string) {
-	const names: string[] = []
-	const times: Time[] = []
-	msgText.split("\n").forEach((line) => {
-		const time = Time.parseTime(line.slice(0, 5))
-		if (!time) throw new Error("Time could not be extracted from message")
-		times.push(time)
-		names.push(line.slice(6))
-	})
-	return { names, times }
 }

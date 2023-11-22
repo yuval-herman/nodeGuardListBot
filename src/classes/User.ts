@@ -20,6 +20,12 @@ export class UserData {
 	private _endTime?: Time
 	private _guardDuration?: number
 	private _nameList?: string[]
+	private _savedListData?:
+		| {
+				startTime: Time
+				originalNameList: string[]
+				modifiedNameList?: string[]
+		  } & ({ endTime: Time } | { guardDuration: number })
 
 	constructor(id: number) {
 		this.id = id
@@ -48,11 +54,32 @@ export class UserData {
 		)
 	}
 
+	saveListData() {
+		if (this.isNameListDataComplete()) {
+			if (this.endTime)
+				this._savedListData = {
+					startTime: this.startTime,
+					originalNameList: this.nameList,
+					endTime: this.endTime,
+				}
+			else
+				this._savedListData = {
+					startTime: this.startTime,
+					originalNameList: this.nameList,
+					guardDuration: this.guardDuration,
+				}
+		}
+	}
+
 	cleanNameListData() {
 		this.endTime = undefined
 		this.startTime = undefined
 		this.guardDuration = undefined
 		this.nameList = undefined
+	}
+
+	public get savedListData() {
+		return this._savedListData
 	}
 
 	public get startTime(): Time | undefined {
