@@ -74,7 +74,12 @@ export const broadcastParser: OptionsParser = async (msg, user, dryRun) => {
 				)
 			)
 		)
-			.map((res) => res.status === "fulfilled" && res.value.result.chat.id)
+			.map(
+				(res) =>
+					res.status === "fulfilled" &&
+					res.value.ok &&
+					res.value.result.chat.id
+			)
 			.filter(Boolean)
 
 		await callAPI("sendMessage", {
