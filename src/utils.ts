@@ -9,59 +9,41 @@ function calculateTime(startTime: Time, endTime: Time, divider: number) {
 	const startTimeSeconds = startTime.toSeconds()
 	const endTimeSeconds = endTime.toSeconds()
 	let guardSeconds = (endTimeSeconds - startTimeSeconds) / divider
-	let multiDay = false
 
 	if (guardSeconds < 0) {
-		multiDay = true
 		guardSeconds =
 			(endTimeSeconds + 24 * 60 * 60 - startTimeSeconds) / divider
 	}
 	return {
 		startTimeSeconds,
-		endTimeSeconds,
 		guardSeconds,
-		multiDay,
 	}
-}
-
-export function createListWithDuration(
-	startTime: Time,
-	duration: number,
-	nameList: string[]
-): string {
-	const startTimeSeconds = startTime.toSeconds()
-	let timedListString = ""
-	let guardTime = startTimeSeconds
-
-	for (let index = 0; index < nameList.length; index++) {
-		timedListString += `${Time.fromSeconds(
-			guardTime > 24 * 60 * 60 ? guardTime - 24 * 60 * 60 : guardTime
-		)} ${nameList[index]}\n`
-		guardTime += duration
-	}
-
-	return timedListString
 }
 
 export function createList(
 	startTime: Time,
-	endTime: Time,
+	endTime: Time | number,
 	nameList: string[]
 ): string {
-	const { guardSeconds, startTimeSeconds, endTimeSeconds, multiDay } =
-		calculateTime(startTime, endTime, nameList.length)
+	let guardSeconds,
+		startTimeSeconds = startTime.toSeconds()
+	if (typeof endTime !== "number") {
+		;({ guardSeconds, startTimeSeconds } = calculateTime(
+			startTime,
+			endTime,
+			nameList.length
+		))
+	} else guardSeconds = endTime
 	let timedListString = ""
 	let nameIndex = 0
 
-	for (
-		let guardTime = startTimeSeconds;
-		guardTime < endTimeSeconds + (multiDay ? 24 * 60 * 60 : 0);
-		guardTime += guardSeconds
-	) {
+	let guardTime = startTimeSeconds
+	while (nameList[nameIndex]) {
 		timedListString += `${Time.fromSeconds(
-			guardTime > 24 * 60 * 60 ? guardTime - 24 * 60 * 60 : guardTime
+			guardTime >= 24 * 60 * 60 ? guardTime - 24 * 60 * 60 : guardTime
 		)} ${nameList[nameIndex]}\n`
 		nameIndex++
+		guardTime += guardSeconds
 	}
 	return timedListString
 }

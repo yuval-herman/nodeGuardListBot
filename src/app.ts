@@ -7,12 +7,7 @@ import { UserData, UserDataFull } from "./classes/User.js"
 import { CONSTANTS } from "./constants.js"
 import { callAPI, getUpdates } from "./telegramApi"
 import { Configs } from "./types"
-import {
-	createList,
-	createListWithDuration,
-	fileLog,
-	log_update,
-} from "./utils"
+import { createList, fileLog, log_update } from "./utils"
 
 export const configs = {} as Configs
 try {
@@ -35,12 +30,10 @@ export const TOKEN =
 
 export const usersData = new Map<number, UserData>()
 
-function sendGuardList(user: UserDataFull): string {
-	const timedNameList = user.endTime
-		? createList(user.startTime, user.endTime, user.nameList)
-		: createListWithDuration(
+function sendGuardList(user: UserDataFull) {
+	const timedNameList = createList(
 				user.startTime,
-				user.guardDuration!,
+		user.endTime || user.guardDuration,
 				user.nameList
 		  )
 	callAPI("sendMessage", {

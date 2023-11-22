@@ -1,6 +1,6 @@
 import { Time } from "./classes/Time.js"
 import { callAPI } from "./telegramApi.js"
-import { UID, createListWithDuration, shuffle } from "./utils.js"
+import { UID, createList, shuffle } from "./utils.js"
 
 export const callback_values = {
 	edit_sent_list: UID(),
