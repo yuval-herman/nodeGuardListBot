@@ -141,3 +141,10 @@ let last_id = 0
 export function UID() {
 	return last_id++
 }
+
+export async function wait(milliseconds: number) {
+	let res: (value: void | PromiseLike<void>) => void
+	const promise = new Promise<void>((resolve) => (res = resolve))
+	setTimeout(() => res(), milliseconds)
+	return promise
+}
