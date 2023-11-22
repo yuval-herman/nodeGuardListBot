@@ -45,6 +45,12 @@ export function handleCallbackQuery(callbackQuery: CallbackQuery) {
 
 	const action: keyof typeof callback_values =
 		callback_values_reversed[callbackQuery.data]
+
+	const { originalNameList, startTime, modifiedNameList } = user.savedListData
+	const endTimeDuration =
+		"endTime" in user.savedListData
+			? user.savedListData.endTime
+			: user.savedListData.guardDuration
 	if (action === "edit_sent_list") {
 		callAPI("editMessageReplyMarkup", {
 			chat_id: callbackQuery.from.id,
@@ -52,49 +58,26 @@ export function handleCallbackQuery(callbackQuery: CallbackQuery) {
 			reply_markup: nameListReplyMarkup,
 		})
 	} else if (action === "shuffle_list") {
-		let list: string
-		const { originalNameList, startTime, modifiedNameList } =
-			user.savedListData
 		const nameList = modifiedNameList ?? originalNameList
 		shuffle(nameList)
-		if ("endTime" in user.savedListData)
-			list = createList(startTime, user.savedListData.endTime, nameList)
-		else
-			list = createList(
-				startTime,
-				user.savedListData.guardDuration,
-				nameList
-			)
-
 		callAPI("editMessageText", {
 			chat_id: callbackQuery.from.id,
 			message_id: callbackQuery.message.message_id,
-			text: list,
+			text: createList(startTime, endTimeDuration, nameList),
 			reply_markup: nameListReplyMarkup,
 		})
 	} else if (action === "add_list_round") {
-		const { originalNameList, startTime } = user.savedListData
-		let list: string
 		user.savedListData.modifiedNameList = (
 			user.savedListData.modifiedNameList ?? originalNameList
 		).concat(originalNameList)
-		if ("endTime" in user.savedListData) {
-			list = createList(
-				startTime,
-				user.savedListData.endTime,
-				user.savedListData.modifiedNameList
-			)
-		} else {
-			list = createList(
-				startTime,
-				user.savedListData.guardDuration,
-				user.savedListData.modifiedNameList
-			)
-		}
 		callAPI("editMessageText", {
 			chat_id: callbackQuery.from.id,
 			message_id: callbackQuery.message.message_id,
-			text: list,
+			text: createList(
+				startTime,
+				endTimeDuration,
+				user.savedListData.modifiedNameList
+			),
 			reply_markup: nameListReplyMarkup,
 		})
 	}
