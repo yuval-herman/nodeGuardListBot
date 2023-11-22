@@ -85,31 +85,27 @@ function sendGuardList(user: UserDataFull) {
 		scope: { type: "chat", chat_id: configs.adminId },
 	})
 	while (true) {
-		try {
-			for (const update of await getUpdates()) {
-				await log_update(update)
-				if (update.callback_query) {
-					handleCallbackQuery(update.callback_query)
-					continue
-				}
-				const message = update.message
-				if (!message || !message.from || !message.text) continue
-				let user = usersData.get(message.from.id)
-				if (!user) {
-					user = new UserData(message.from.id)
-					usersData.set(user.id, user)
-				}
-				for (const parser of user.getOptionsParsers()) {
-					if (await parser(message, user)) break
-				}
-				fileLog("verbose", "USER_STATE", JSON.stringify(user))
-				if (user.isNameListDataComplete()) {
-					sendGuardList(user)
-					user.cleanNameListData()
-				}
+		for (const update of await getUpdates()) {
+			await log_update(update)
+			if (update.callback_query) {
+				handleCallbackQuery(update.callback_query)
+				continue
 			}
-		} catch (error) {
-			console.error(error)
+			const message = update.message
+			if (!message || !message.from || !message.text) continue
+			let user = usersData.get(message.from.id)
+			if (!user) {
+				user = new UserData(message.from.id)
+				usersData.set(user.id, user)
+			}
+			for (const parser of user.getOptionsParsers()) {
+				if (await parser(message, user)) break
+			}
+			fileLog("verbose", "USER_STATE", JSON.stringify(user))
+			if (user.isNameListDataComplete()) {
+				sendGuardList(user)
+				user.cleanNameListData()
+			}
 		}
 	}
 })()
