@@ -64,11 +64,11 @@ export class UserData {
 			else if (!this.helpData.end) parsers.push(endHelp)
 			else if (!this.helpData.guard) parsers.push(guardHelp)
 		} else if (this.state === UserData.states.generic) {
+			if (this.id === configs.adminId) parsers.push(broadcastParser)
 			if (!this.startTime) parsers.push(startTimeParser)
 			if (!(this.endTime || this.guardDuration))
 				parsers.push(endTimeParser, durationParser)
 			if (!this.nameList) parsers.push(nameListParser)
-			if (this.id === configs.adminId) parsers.push(broadcastParser)
 			return parsers.concat(
 				startParser,
 				helpParser,
