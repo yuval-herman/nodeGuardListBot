@@ -4,6 +4,7 @@ import { UserData } from "./classes/User.js"
 import { CONSTANTS } from "./constants.js"
 import { callAPI } from "./telegramApi.js"
 import { OptionsParser } from "./types"
+import { helpParser } from "./classes/Help.js"
 
 async function sendCurrentState(user: UserData) {
 	if (user.isNameListDataComplete()) return
@@ -22,13 +23,7 @@ async function sendCurrentState(user: UserData) {
 
 export const startParser: OptionsParser = async (msg, user, dryRun) => {
 	if (msg.text !== "/start") return false
-	if (!dryRun) {
-		await callAPI("sendMessage", {
-			chat_id: user.id,
-			text: "שלום!\nאני בוט פשוט שיודע לעזור ברשימות שמירה.\nשלח לי רשימת שמות ושעת התחלה וסוף ואני יעשה את השאר.",
-		})
-	}
-	return true
+	return helpParser({ ...msg, text: "/help" }, user, dryRun)
 }
 
 export const clearParser: OptionsParser = async (msg, user, dryRun) => {
