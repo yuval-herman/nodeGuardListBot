@@ -98,9 +98,7 @@ function sendGuardList(user: UserDataFull) {
 				user = new UserData(message.from.id)
 				usersData.set(user.id, user)
 			}
-			for (const parser of user.getOptionsParsers()) {
-				if (await parser(message, user)) break
-			}
+			user.answerMessage(message)
 			fileLog("verbose", "USER_STATE", JSON.stringify(user))
 			if (user.isNameListDataComplete()) {
 				sendGuardList(user)

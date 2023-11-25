@@ -1,38 +1,10 @@
-import { configs } from "../app.js"
-import {
-	broadcastParser,
-	clearParser,
-	durationParser,
-	endTimeParser,
-	nameListParser,
-	smartParser,
-	startParser,
-	startTimeParser,
-	unknownMessageParser,
-} from "../parsers.js"
-import { OptionsParser } from "../types.js"
-import { UID } from "../utils.js"
-import {
-	endHelp,
-	guardHelp,
-	helpParser,
-	namesHelp,
-	okayParser,
-	skipParser,
-	startHelp,
-} from "./Help.js"
+import { GenericState } from "../user-states/Generic.js"
+import { UserState } from "../user-states/UserState.js"
 import { Time } from "./Time.js"
 
 export class UserData {
 	id: number
-	state: number
-	helpData: {
-		okay?: boolean
-		start?: Time
-		end?: Time
-		guard?: number
-		names?: string[]
-	} = {}
+	state: UserState
 	private _startTime?: Time
 	private _endTime?: Time
 	private _guardDuration?: number
@@ -46,38 +18,11 @@ export class UserData {
 
 	constructor(id: number) {
 		this.id = id
-		this.state = UserData.states.generic
+		this.state = new GenericState()
 	}
 
-	static states = {
-		generic: UID(),
-		help: UID(),
-	} as const
-
-	getOptionsParsers(): OptionsParser[] {
-		const parsers: OptionsParser[] = []
-		if (this.state === UserData.states.help) {
-			parsers.push(skipParser)
-			if (!this.helpData.okay) parsers.push(okayParser)
-			else if (!this.helpData.start) parsers.push(startHelp)
-			else if (!this.helpData.names) parsers.push(namesHelp)
-			else if (!this.helpData.end) parsers.push(endHelp)
-			else if (!this.helpData.guard) parsers.push(guardHelp)
-		} else if (this.state === UserData.states.generic) {
-			if (this.id === configs.adminId) parsers.push(broadcastParser)
-			if (!this.startTime) parsers.push(startTimeParser)
-			if (!(this.endTime || this.guardDuration))
-				parsers.push(endTimeParser, durationParser)
-			if (!this.nameList) parsers.push(nameListParser)
-			return parsers.concat(
-				startParser,
-				helpParser,
-				clearParser,
-				smartParser,
-				unknownMessageParser
-			) // add default parsers
-		}
-		return parsers
+	answerMessage(msg: Message) {
+		this.state.parse(msg, this)
 	}
 
 	isNameListDataComplete(): this is UserDataFull {
