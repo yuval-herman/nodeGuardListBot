@@ -91,49 +91,39 @@ export const broadcastParser: OptionsParser = async (msg, user, dryRun) => {
 
 export const smartParser: OptionsParser = async (msg, user, dryRun) => {
 	if (!msg.text) return false
-	const endMessage =
-		"\nאתה יכול לשלוח /help כדי לראות את הפורמט הנכון לשליחת הודעות.\nאם זה לא מה שהתכוונת, שלח לי /clear כדי לנקות את הנתונים"
 	const timeArray = Time.parseTimeGlobal(msg.text)
 	if (timeArray.length === 2) {
+		await sendMessage(
+			`השמירה תתחיל בשעה ${timeArray[0]} ותסתיים בשעה ${
+				timeArray[1].equals(timeArray[0])
+					? timeArray[1] + " ביום למחרת "
+					: timeArray[1]
+			}`
+		)
 		user.startTime = timeArray[0]
 		user.endTime = timeArray[1]
-		await sendMessage(
-			`קבעתי שהשמירה תתחיל בשעה ${user.startTime} ותסתיים בשעה ${user.endTime}.${endMessage} ותרשום לי את שעת תחילת השמירה ושעת הסיום בשתי הודעות נפרדות.`
-		)
 		return true
 	}
 	if (timeArray.length === 1) {
 		if (msg.text.includes("התחלה")) {
 			user.startTime = timeArray[0]
-			await sendMessage(
-				`קבעתי שהשמירה תתחיל בשעה ${user.startTime}.${endMessage} ותתחיל מחדש.`
-			)
+			await sendMessage(`השמירה תתחיל בשעה ${user.startTime}`)
 			return true
 		} else if (["סיום", "סוף"].some((str) => msg.text?.includes(str))) {
 			user.endTime = timeArray[0]
-			await sendMessage(
-				`קבעתי שהשמירה תסתיים בשעה ${user.endTime}.${endMessage} ותתחיל מחדש.`
-			)
+			await sendMessage(`השמירה תסתיים בשעה ${user.endTime}`)
 			return true
 		}
 	}
 	const words = msg.text.split(" ")
 	if (words.length >= 4) {
 		user.nameList = words
-		await sendMessage(
-			`הגדרתי את רשימת השמות כך:\n${user.nameList.join(
-				"\n"
-			)}.${endMessage} ותתחיל מחדש.`
-		)
+		await sendMessage(`קיבלתי! ישנם ${user.nameList.length} שומרים`)
 		return true
 	}
 
 	return false
 	async function sendMessage(text: string) {
-		await callAPI("sendMessage", {
-			chat_id: user.id,
-			text: "ההודעה ששלחת אינה רשומה בפורמט שאני מבין.",
-		})
 		await callAPI("sendMessage", { chat_id: user.id, text })
 	}
 }
