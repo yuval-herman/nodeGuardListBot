@@ -11,75 +11,124 @@ export class GenericState implements UserState {
 	private _endTime?: Time
 	private _guardDuration?: number
 	private _nameList?: string[]
-
 	private _savedListData?:
 		| {
 				startTime: Time
 				originalNameList: string[]
 				modifiedNameList?: string[]
 		  } & ({ endTime: Time } | { guardDuration: number })
+	private commands: Map<
+		string,
+		(msg: Message, user: UserData) => Promise<boolean>
+	>
+
+	constructor() {
+		const helpCommand = async (msg: Message, user: UserData) => {
+			user.state = new HelpState(user)
+			return true
+		}
+		this.commands = new Map([
+			["/start", helpCommand],
+			["/help", helpCommand],
+			[
+				"/clear",
+				async (msg: Message, user: UserData) => {
+					const result = await callAPI("sendMessage", {
+						chat_id: user.id,
+						text: "נתונים נמחקים...",
+					})
+					this.cleanNameListData()
+					setTimeout(() => {
+						callAPI("editMessageText", {
+							chat_id: user.id,
+							message_id: result.result.message_id,
+							text: "נתונים נמחקו!",
+						})
+					}, 500)
+					return true
+				},
+			],
+			[
+				"/broadcast",
+				async (msg: Message, user: UserData) => {
+					const message = msg.text!.slice(11)
+					let users: User[]
+					const file = await readFile(CONSTANTS.USERS_FILE, "utf-8")
+					try {
+						users = Object.values(JSON.parse(file))
+					} catch (error) {
+						await callAPI("sendMessage", {
+							chat_id: user.id,
+							text: "תקלה בשליחת ההודעה\n" + error,
+						})
+						return true
+					}
+					const successfulUsers = (
+						await Promise.allSettled(
+							users.map(async (user) =>
+								callAPI("sendMessage", {
+									chat_id: user.id,
+									text: message,
+								})
+							)
+						)
+					)
+						.map(
+							(res) =>
+								res.status === "fulfilled" &&
+								res.value.ok &&
+								res.value.result.chat.id
+						)
+						.filter(Boolean)
+
+					await callAPI("sendMessage", {
+						chat_id: user.id,
+						text:
+							"הודעה נשלחה לכל המשתמשים הבאים:\n" +
+							successfulUsers
+								.map((id) => users.find((user) => user.id === id))
+								.map((user) => user!.username || user!.first_name),
+					})
+					return true
+				},
+			],
+		])
+	}
 
 	async parse(msg: Message, user: UserData): Promise<void> {
-		if (msg.text === "/start" || msg.text === "/help") {
-			user.state = new HelpState(user)
-			return
-		} else if (msg.text === "/clear") {
-			const result = await callAPI("sendMessage", {
-				chat_id: user.id,
-				text: "נתונים נמחקים...",
-			})
-			this.cleanNameListData()
-			setTimeout(() => {
-				callAPI("editMessageText", {
-					chat_id: user.id,
-					message_id: result.result.message_id,
-					text: "נתונים נמחקו!",
-				})
-			}, 500)
-			return
-		} else if (msg.text?.startsWith("/broadcast")) {
-			const message = msg.text.slice(11)
-			let users: User[]
-			const file = await readFile(CONSTANTS.USERS_FILE, "utf-8")
-			try {
-				users = Object.values(JSON.parse(file))
-			} catch (error) {
-				await callAPI("sendMessage", {
-					chat_id: user.id,
-					text: "תקלה בשליחת ההודעה\n" + error,
-				})
-				return
-			}
-			const successfulUsers = (
-				await Promise.allSettled(
-					users.map(async (user) =>
-						callAPI("sendMessage", { chat_id: user.id, text: message })
-					)
-				)
-			)
-				.map(
-					(res) =>
-						res.status === "fulfilled" &&
-						res.value.ok &&
-						res.value.result.chat.id
-				)
-				.filter(Boolean)
-
-			await callAPI("sendMessage", {
-				chat_id: user.id,
-				text:
-					"הודעה נשלחה לכל המשתמשים הבאים:\n" +
-					successfulUsers
-						.map((id) => users.find((user) => user.id === id))
-						.map((user) => user!.username || user!.first_name),
-			})
-			return
-		}
 		if (!msg.text) return
+		if (await this.commands.get(msg.text.split(" ")[0])?.(msg, user)) return
+
 		const time = Time.parseTime(msg.text)
 
 		if (time) {
-			if (this.startTime) {
+			if (this.startTime && (this.endTime || this.guardDuration)) {
+				await callAPI("sendMessage", {
+					chat_id: user.id,
+					text: `כבר שלחת לי את זמני השמירות\nשעת התחלה: ${
+						this.startTime
+					}\n${
+						this.endTime
+							? `שעת סוף: ${
+									this.endTime.hour > 24
+										? new Time(
+												this.endTime.hour - 24,
+												this.endTime.minute
+										  ) + "ביום למחרת"
+										: this.endTime
+							  }`
+							: `זמן השמירה: ${Math.floor(
+									this.guardDuration! / 60
+							  )} דקות`
+					}\nעכשיו שלח לי רשימת שמות\nכדי למחוק את הנתונים ולהתחיל מחדש שלח לי /clear`,
+				})
+			} else if (!this.startTime) {
+				await callAPI("sendMessage", {
+					chat_id: user.id,
+					text: `השמירה תתחיל ב-${time}`,
+				})
+				this.startTime = time
+			} else {
 				if (this.startTime?.equals(time)) {
 					await callAPI("sendMessage", {
 						chat_id: user.id,
@@ -92,15 +141,29 @@ export class GenericState implements UserState {
 					})
 				}
 				this.endTime = time
-			} else {
-				await callAPI("sendMessage", {
-					chat_id: user.id,
-					text: `השמירה תתחיל ב-${time}`,
-				})
-				this.startTime = time
 			}
 			return
 		} else if (msg.text.match(/^\d+$/)) {
+			if (this.endTime) {
+				await callAPI("sendMessage", {
+					chat_id: user.id,
+					text: `כבר שלחת לי את זמן סוף השמירה (${
+						this.endTime.hour > 24
+							? new Time(this.endTime.hour - 24, this.endTime.minute) +
+							  "ביום למחרת"
+							: this.endTime
+					}).\nכדי למחוק את הנתונים ולהתחיל מחדש שלח לי /clear`,
+				})
+				return
+			} else if (this.guardDuration) {
+				await callAPI("sendMessage", {
+					chat_id: user.id,
+					text: `כבר שלחת לי את זמן השמירה (${Math.floor(
+						this.guardDuration / 60
+					)} דקות).\nכדי למחוק את הנתונים ולהתחיל מחדש שלח לי /clear`,
+				})
+				return
+			}
 			const minutes = parseInt(msg.text)
 			await callAPI("sendMessage", {
 				chat_id: user.id,
