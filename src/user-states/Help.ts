@@ -6,14 +6,11 @@ import { GenericState } from "./Generic.js"
 import { UserState } from "./UserState.js"
 
 export class HelpState implements UserState {
-	name = "HelpState"
-	helpData: {
-		okay?: boolean
-		start?: Time
-		end?: Time
-		guard?: number
-		names?: string[]
-	} = {}
+	private okay?: boolean
+	private start?: Time
+	private end?: Time
+	private guard?: number
+	private names?: string[]
 
 	constructor(user: UserData) {
 		;(async () => {
@@ -42,8 +39,8 @@ export class HelpState implements UserState {
 			})
 			return
 		}
-		if (!this.helpData.okay) {
-			this.helpData.okay = true
+		if (!this.okay) {
+			this.okay = true
 			await callAPI("sendMessage", {
 				chat_id: user.id,
 				text: "בוא ונתחיל עם הבסיס, כדי ליצור רשימת שמירה דרושים שלושה מרכיבים בסיסיים:\n1. שעת תחילת הרשימה\n2. רשימת שמות\n3. ולבסוף שעת סיום השמירה או זמן כל שמירה בנפרד",
@@ -63,9 +60,9 @@ export class HelpState implements UserState {
 		const names = msg.text.split("\n")
 		const match = msg.text.match(/^\d+$/)
 
-		if (!this.helpData.start) {
+		if (!this.start) {
 			if (time) {
-				this.helpData.start = time
+				this.start = time
 				await callAPI("sendMessage", {
 					chat_id: user.id,
 					text: `מצויין!\nעכשיו אני יודע שהשמירה תתחיל בשעה ${time}.`,
@@ -86,9 +83,9 @@ export class HelpState implements UserState {
 				})
 			}
 			return
-		} else if (!this.helpData.names) {
+		} else if (!this.names) {
 			if (names.length > 1) {
-				this.helpData.names = names
+				this.names = names
 				await callAPI("sendMessage", {
 					chat_id: user.id,
 					text: `מצויין!\nעכשיו יש לנו רשימה עם ${names.length} שומרים.`,
@@ -109,22 +106,22 @@ export class HelpState implements UserState {
 				})
 			}
 			return
-		} else if (!this.helpData.end) {
+		} else if (!this.end) {
 			if (time) {
 				await callAPI("sendMessage", {
 					chat_id: user.id,
 					text: `וזהו! עכשיו שאני יודע שהשמירה תסתיים בשעה ${time}${
-						time.equals(this.helpData.start!) ? " ביום למחרת" : ""
+						time.equals(this.start!) ? " ביום למחרת" : ""
 					} אני יכול לחשב כמה זמן יצטרך לשמור כל שומר ולשלוח רשימה מסודרת.`,
 				})
 				await callAPI("sendChatAction", {
 					chat_id: user.id,
 					action: "typing",
 				})
-				time.equals(this.helpData.start!) && (time.hour += 24)
-				this.helpData.end = time
+				time.equals(this.start!) && (time.hour += 24)
+				this.end = time
 				await wait(300)
-				const { start, end, names } = this.helpData
+				const { start, end, names } = this
 				await callAPI("sendMessage", {
 					chat_id: user.id,
 					text: createList(start!, end, names!),
@@ -167,12 +164,12 @@ export class HelpState implements UserState {
 				return
 			}
 			const guardDuration = parseInt(msg.text)
-			this.helpData.guard = guardDuration * 60
+			this.guard = guardDuration * 60
 			await callAPI("sendMessage", {
 				chat_id: user.id,
 				text: `עכשיו אני יצור רשימה שבה כל שמירה תימשך ${guardDuration} דקות`,
 			})
-			const { start, names, guard } = this.helpData
+			const { start, names, guard } = this
 			await callAPI("sendChatAction", {
 				chat_id: user.id,
 				action: "typing",

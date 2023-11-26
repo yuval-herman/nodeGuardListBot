@@ -3,11 +3,12 @@ import {
 	callback_values,
 	handleCallbackQuery,
 } from "./callbackQueryHandling.js"
-import { UserData, UserDataFull } from "./classes/User.js"
+import { UserData } from "./classes/User.js"
 import { CONSTANTS } from "./constants.js"
 import { callAPI, getUpdates } from "./telegramApi"
 import { Configs } from "./types"
 import { createList, fileLog, log_update } from "./utils"
+import { GenericState } from "./user-states/Generic.js"
 
 export const configs = {} as Configs
 try {
@@ -29,25 +30,6 @@ export const TOKEN =
 	process.env.NODE_ENV !== "production" ? configs.testingToken! : configs.token
 
 export const usersData = new Map<number, UserData>()
-
-function sendGuardList(user: UserDataFull) {
-	const timedNameList = createList(
-		user.startTime,
-		user.endTime || user.guardDuration,
-		user.nameList
-	)
-	callAPI("sendMessage", {
-		chat_id: user.id,
-		text: timedNameList,
-		reply_markup: {
-			inline_keyboard: [
-				[{ text: "ערוך", callback_data: callback_values.edit_sent_list }],
-			],
-		},
-	})
-	user.saveListData()
-}
-
 ;(async () => {
 	console.log(await callAPI("getMe"))
 	if (process.env.NODE_ENV === "production") {
@@ -100,9 +82,31 @@ function sendGuardList(user: UserDataFull) {
 			}
 			user.answerMessage(message)
 			fileLog("verbose", "USER_STATE", JSON.stringify(user))
-			if (user.isNameListDataComplete()) {
-				sendGuardList(user)
-				user.cleanNameListData()
+			if (
+				user.state instanceof GenericState &&
+				user.state.isNameListDataComplete()
+			) {
+				const timedNameList = createList(
+					user.state.startTime!,
+					user.state.endTime! || user.state.guardDuration!,
+					user.state.nameList!
+				)
+				callAPI("sendMessage", {
+					chat_id: user.id,
+					text: timedNameList,
+					reply_markup: {
+						inline_keyboard: [
+							[
+								{
+									text: "ערוך",
+									callback_data: callback_values.edit_sent_list,
+								},
+							],
+						],
+					},
+				})
+				user.state.saveListData()
+				user.state.cleanNameListData()
 			}
 		}
 	}
