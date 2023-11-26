@@ -124,7 +124,7 @@ export class HelpState implements UserState {
 				const { start, end, names } = this
 				await callAPI("sendMessage", {
 					chat_id: user.id,
-					text: createList(start!, end, names!),
+					text: createList(start!, end, names!).timedListString,
 				})
 				await callAPI("sendChatAction", {
 					chat_id: user.id,
@@ -177,7 +177,7 @@ export class HelpState implements UserState {
 			await wait(300)
 			await callAPI("sendMessage", {
 				chat_id: user.id,
-				text: createList(start!, guard, names!),
+				text: createList(start!, guard, names!).timedListString,
 			})
 			await callAPI("sendChatAction", {
 				chat_id: user.id,

@@ -86,14 +86,14 @@ export const usersData = new Map<number, UserData>()
 				user.state instanceof GenericState &&
 				user.state.isNameListDataComplete()
 			) {
-				const timedNameList = createList(
+				const { timedListString, list } = createList(
 					user.state.startTime!,
 					user.state.endTime! || user.state.guardDuration!,
 					user.state.nameList!
 				)
 				callAPI("sendMessage", {
 					chat_id: user.id,
-					text: timedNameList,
+					text: timedListString,
 					reply_markup: {
 						inline_keyboard: [
 							[
@@ -105,6 +105,7 @@ export const usersData = new Map<number, UserData>()
 						],
 					},
 				})
+				user.saveGuards(list)
 				user.state.saveListData()
 				user.state.cleanNameListData()
 			}

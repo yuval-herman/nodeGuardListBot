@@ -66,7 +66,7 @@ export function handleCallbackQuery(callbackQuery: CallbackQuery) {
 		callAPI("editMessageText", {
 			chat_id: callbackQuery.from.id,
 			message_id: callbackQuery.message.message_id,
-			text: createList(startTime, endTimeDuration, nameList),
+			text: createList(startTime, endTimeDuration, nameList).timedListString,
 			reply_markup: nameListReplyMarkup,
 		})
 	} else if (action === "add_list_round") {
@@ -80,7 +80,7 @@ export function handleCallbackQuery(callbackQuery: CallbackQuery) {
 				startTime,
 				endTimeDuration,
 				user.state.savedListData.modifiedNameList
-			),
+			).timedListString,
 			reply_markup: nameListReplyMarkup,
 		})
 	}

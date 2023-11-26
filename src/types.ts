@@ -1,3 +1,4 @@
+import { Time } from "./classes/Time.js"
 import { UserData } from "./classes/User.js"
 
 export type OptionsParser = (
@@ -12,4 +13,9 @@ export interface Configs {
 	last_update_id?: number
 	adminId: number
 	webhookUrl?: string
+}
+
+export type ListEntry = {
+	name: string
+	time: Time
 }

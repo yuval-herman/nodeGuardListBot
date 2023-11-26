@@ -4,6 +4,7 @@ import { usersData } from "./app.js"
 import { callback_values_reversed } from "./callbackQueryHandling.js"
 import { Time } from "./classes/Time.js"
 import { CONSTANTS } from "./constants.js"
+import { ListEntry } from "./types.js"
 
 function calculateTime(startTime: Time, endTime: Time, divider: number) {
 	const startTimeSeconds = startTime.toSeconds()
@@ -24,7 +25,7 @@ export function createList(
 	startTime: Time,
 	endTime: Time | number,
 	nameList: string[]
-): string {
+) {
 	let guardSeconds,
 		startTimeSeconds = startTime.toSeconds()
 	if (typeof endTime !== "number") {
@@ -36,16 +37,22 @@ export function createList(
 	} else guardSeconds = endTime
 	let timedListString = ""
 	let nameIndex = 0
-
 	let guardTime = startTimeSeconds
+
+	const list: ListEntry[] = []
 	while (nameList[nameIndex]) {
-		timedListString += `${Time.fromSeconds(
-			guardTime >= 24 * 60 * 60 ? guardTime - 24 * 60 * 60 : guardTime
-		)} ${nameList[nameIndex]}\n`
+		const entry: ListEntry = {
+			time: Time.fromSeconds(
+				guardTime >= 24 * 60 * 60 ? guardTime - 24 * 60 * 60 : guardTime
+			),
+			name: nameList[nameIndex],
+		}
+		list.push(entry)
+		timedListString += `${entry.time} ${entry.name}\n`
 		nameIndex++
 		guardTime += guardSeconds
 	}
-	return timedListString
+	return { timedListString, list }
 }
 
 export async function log_update(update: Update) {
