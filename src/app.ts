@@ -68,7 +68,7 @@ export const usersData = new Map<number, UserData>()
 	})
 	while (true) {
 		for (const update of await getUpdates()) {
-			await log_update(update)
+			log_update(update)
 			if (update.callback_query) {
 				handleCallbackQuery(update.callback_query)
 				continue
@@ -80,7 +80,7 @@ export const usersData = new Map<number, UserData>()
 				user = new UserData(message.from.id)
 				usersData.set(user.id, user)
 			}
-			user.answerMessage(message)
+			await user.answerMessage(message)
 			fileLog("verbose", "USER_STATE", JSON.stringify(user))
 			if (
 				user.state instanceof GenericState &&

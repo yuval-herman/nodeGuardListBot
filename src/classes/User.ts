@@ -10,7 +10,7 @@ export class UserData {
 		this.state = new GenericState()
 	}
 
-	answerMessage(msg: Message) {
-		this.state.parse(msg, this)
+	answerMessage(msg: Message): Promise<void> {
+		return this.state.parse(msg, this)
 	}
 }
