@@ -19,11 +19,14 @@ export class GenericState implements UserState {
 		  } & ({ endTime: Time } | { guardDuration: number })
 	private commands: Map<
 		string,
-		(msg: Message, user: UserData) => Promise<boolean>
+		(msg: Message, user: UserData) => Promise<true>
 	>
 
 	constructor() {
-		const helpCommand = async (msg: Message, user: UserData) => {
+		const helpCommand = async (
+			msg: Message,
+			user: UserData
+		): Promise<true> => {
 			user.state = new HelpState(user)
 			return true
 		}
@@ -88,6 +91,16 @@ export class GenericState implements UserState {
 							successfulUsers
 								.map((id) => users.find((user) => user.id === id))
 								.map((user) => user!.username || user!.first_name),
+					})
+					return true
+				},
+			],
+			[
+				"/auto",
+				async (msg, user) => {
+					await callAPI("sendMessage", {
+						chat_id: user.id,
+						text: "פיצ'ר זה עוד לא מוכן",
 					})
 					return true
 				},
