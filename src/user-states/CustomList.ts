@@ -257,6 +257,7 @@ export class CustomListState implements UserState {
 						? endDay - startDay
 						: endDay + 7 - startDay
 					: 0
+			let nameIndices = Array(stations).fill(0)
 			for (let i = 0; i <= dayCount; i++) {
 				if (startDay !== undefined)
 					builder.push(
@@ -268,20 +269,35 @@ export class CustomListState implements UserState {
 					)
 				for (let k = 0; k < stations; k++) {
 					if (stations > 1) builder.push(`עמדה ${k + 1}`)
-					builder.push(
-						createList(
-							startTime,
-							guardDuration ||
+					const names = nameList.slice(chunks * k, chunks * (k + 1))
+					if (guardDuration) {
+						for (
+							let time = startTime.toSeconds();
+							time < startTime.toSeconds() + 24 * 60 * 60;
+							time += guardDuration
+						) {
+							builder.push(
+								`${Time.fromSeconds(time % (24 * 60 * 60))} ${
+									names[nameIndices[k]]
+								}`
+							)
+							nameIndices[k] = (nameIndices[k] + 1) % names.length
+						}
+					} else {
+						builder.push(
+							createList(
+								startTime,
 								new Time(startTime.hour + 24, startTime.minute),
-							nameList.slice(chunks * k, chunks * (k + 1))
-						).timedListString
-					)
+								names
+							).timedListString
+						)
+					}
 				}
 			}
-			if (nameList.length > chunks * stations)
-				builder.push(
-					`חיילים נותרים:\n${nameList.slice(chunks * stations).join("\n")}`
-				)
+			// if (nameList.length > chunks * stations)
+			// 	builder.push(
+			// 		`חיילים נותרים:\n${nameList.slice(chunks * stations).join("\n")}`
+			// 	)
 		}
 
 		if (builder.length) {
