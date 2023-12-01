@@ -257,7 +257,9 @@ export class CustomListState implements UserState {
 						? endDay - startDay
 						: endDay + 7 - startDay
 					: 0
-			let nameIndices = Array(stations).fill(0)
+			const stationsData: { nameIndex: number; time: number }[] = [
+				...Array(stations),
+			].map(() => ({ nameIndex: 0, time: startTime!.toSeconds() }))
 			for (let i = 0; i <= dayCount; i++) {
 				if (startDay !== undefined)
 					builder.push(
@@ -272,17 +274,20 @@ export class CustomListState implements UserState {
 					const names = nameList.slice(chunks * k, chunks * (k + 1))
 					if (guardDuration) {
 						for (
-							let time = startTime.toSeconds();
-							time < startTime.toSeconds() + 24 * 60 * 60;
-							time += guardDuration
+							;
+							stationsData[k].time <
+							startTime.toSeconds() + 24 * 60 * 60;
+							stationsData[k].time += guardDuration
 						) {
 							builder.push(
-								`${Time.fromSeconds(time % (24 * 60 * 60))} ${
-									names[nameIndices[k]]
-								}`
+								`${Time.fromSeconds(
+									stationsData[k].time % (24 * 60 * 60)
+								)} ${names[stationsData[k].nameIndex]}`
 							)
-							nameIndices[k] = (nameIndices[k] + 1) % names.length
+							stationsData[k].nameIndex =
+								(stationsData[k].nameIndex + 1) % names.length
 						}
+						stationsData[k].time %= 24 * 60 * 60
 					} else {
 						builder.push(
 							createList(
