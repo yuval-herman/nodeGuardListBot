@@ -19,3 +19,7 @@ export type ListEntry = {
 	name: string
 	time: Time
 }
+
+export interface TextMessage extends Message {
+	text: string
+}

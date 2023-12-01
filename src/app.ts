@@ -53,6 +53,10 @@ export const usersData = new Map<number, UserData>()
 			command: "clear",
 			description: "ניקוי המידע השמור כעת, התחלת שיחה מחדש",
 		},
+		{
+			command: "custom",
+			description: "יצירת רשימת שמירה מתקדמת",
+		},
 	]
 	await callAPI("setMyCommands", {
 		commands: defaultCommands,

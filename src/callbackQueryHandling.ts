@@ -1,5 +1,6 @@
 import { usersData } from "./app.js"
 import { callAPI } from "./telegramApi.js"
+import { CustomListState } from "./user-states/CustomList.js"
 import { GenericState } from "./user-states/Generic.js"
 import { UID, createList, shuffle } from "./utils.js"
 
@@ -7,6 +8,11 @@ export const callback_values = {
 	edit_sent_list: UID(),
 	shuffle_list: UID(),
 	add_list_round: UID(),
+	change_start_end_day: UID(),
+	change_list_start_time: UID(),
+	change_guard_duration: UID(),
+	change_stations_number: UID(),
+	send_name_list: UID(),
 } as const
 export const callback_values_reversed = Object.fromEntries(
 	Object.entries(callback_values).map((v) => v.reverse())
@@ -29,8 +35,13 @@ const nameListReplyMarkup = {
 	],
 }
 
-export function handleCallbackQuery(callbackQuery: CallbackQuery) {
+export function handleCallbackQuery(callbackQuery: CallbackQuery): void {
 	const user = usersData.get(callbackQuery.from.id)
+	if (user && user.state instanceof CustomListState) {
+		user.state.handleCallback(callbackQuery, user)
+		return
+	}
+
 	if (
 		!callbackQuery.data ||
 		!callbackQuery.message ||

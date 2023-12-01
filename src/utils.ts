@@ -4,7 +4,7 @@ import { usersData } from "./app.js"
 import { callback_values_reversed } from "./callbackQueryHandling.js"
 import { Time } from "./classes/Time.js"
 import { CONSTANTS } from "./constants.js"
-import { ListEntry } from "./types.js"
+import { ListEntry, TextMessage } from "./types.js"
 
 function calculateTime(startTime: Time, endTime: Time, divider: number) {
 	const startTimeSeconds = startTime.toSeconds()
@@ -154,4 +154,8 @@ export async function wait(milliseconds: number) {
 	const promise = new Promise<void>((resolve) => (res = resolve))
 	setTimeout(() => res(), milliseconds)
 	return promise
+}
+
+export function validateTextMessage(msg: Message): msg is TextMessage {
+	return !!msg.text
 }

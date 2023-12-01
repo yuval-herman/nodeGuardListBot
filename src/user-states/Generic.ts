@@ -5,7 +5,12 @@ import { HelpState } from "./Help.js"
 import { UserState } from "./UserState.js"
 import { CONSTANTS } from "../constants.js"
 import { Time } from "../classes/Time.js"
+import { CustomListState } from "./CustomList.js"
 
+const helpCommand = async (msg: Message, user: UserData): Promise<true> => {
+	user.state = new HelpState(user)
+	return true
+}
 export class GenericState implements UserState {
 	private _startTime?: Time
 	private _endTime?: Time
@@ -17,100 +22,84 @@ export class GenericState implements UserState {
 				originalNameList: string[]
 				modifiedNameList?: string[]
 		  } & ({ endTime: Time } | { guardDuration: number })
-	private commands: Map<
+	private commands: Record<
 		string,
 		(msg: Message, user: UserData) => Promise<true>
-	>
-
-	constructor() {
-		const helpCommand = async (
-			msg: Message,
-			user: UserData
-		): Promise<true> => {
-			user.state = new HelpState(user)
+	> = {
+		"/start": helpCommand,
+		"/help": helpCommand,
+		"/clear": async (msg: Message, user: UserData) => {
+			const result = await callAPI("sendMessage", {
+				chat_id: user.id,
+				text: "נתונים נמחקים...",
+			})
+			this.cleanNameListData()
+			setTimeout(() => {
+				callAPI("editMessageText", {
+					chat_id: user.id,
+					message_id: result.result.message_id,
+					text: "נתונים נמחקו!",
+				})
+			}, 500)
 			return true
-		}
-		this.commands = new Map([
-			["/start", helpCommand],
-			["/help", helpCommand],
-			[
-				"/clear",
-				async (msg: Message, user: UserData) => {
-					const result = await callAPI("sendMessage", {
-						chat_id: user.id,
-						text: "נתונים נמחקים...",
-					})
-					this.cleanNameListData()
-					setTimeout(() => {
-						callAPI("editMessageText", {
+		},
+		"/broadcast": async (msg: Message, user: UserData) => {
+			const message = msg.text!.slice(11)
+			let users: User[]
+			const file = await readFile(CONSTANTS.USERS_FILE, "utf-8")
+			try {
+				users = Object.values(JSON.parse(file))
+			} catch (error) {
+				await callAPI("sendMessage", {
+					chat_id: user.id,
+					text: "תקלה בשליחת ההודעה\n" + error,
+				})
+				return true
+			}
+			const successfulUsers = (
+				await Promise.allSettled(
+					users.map(async (user) =>
+						callAPI("sendMessage", {
 							chat_id: user.id,
-							message_id: result.result.message_id,
-							text: "נתונים נמחקו!",
+							text: message,
 						})
-					}, 500)
-					return true
-				},
-			],
-			[
-				"/broadcast",
-				async (msg: Message, user: UserData) => {
-					const message = msg.text!.slice(11)
-					let users: User[]
-					const file = await readFile(CONSTANTS.USERS_FILE, "utf-8")
-					try {
-						users = Object.values(JSON.parse(file))
-					} catch (error) {
-						await callAPI("sendMessage", {
-							chat_id: user.id,
-							text: "תקלה בשליחת ההודעה\n" + error,
-						})
-						return true
-					}
-					const successfulUsers = (
-						await Promise.allSettled(
-							users.map(async (user) =>
-								callAPI("sendMessage", {
-									chat_id: user.id,
-									text: message,
-								})
-							)
-						)
 					)
-						.map(
-							(res) =>
-								res.status === "fulfilled" &&
-								res.value.ok &&
-								res.value.result.chat.id
-						)
-						.filter(Boolean)
+				)
+			)
+				.map(
+					(res) =>
+						res.status === "fulfilled" &&
+						res.value.ok &&
+						res.value.result.chat.id
+				)
+				.filter(Boolean)
 
-					await callAPI("sendMessage", {
-						chat_id: user.id,
-						text:
-							"הודעה נשלחה לכל המשתמשים הבאים:\n" +
-							successfulUsers
-								.map((id) => users.find((user) => user.id === id))
-								.map((user) => user!.username || user!.first_name),
-					})
-					return true
-				},
-			],
-			[
-				"/auto",
-				async (msg, user) => {
-					await callAPI("sendMessage", {
-						chat_id: user.id,
-						text: "פיצ'ר זה עוד לא מוכן",
-					})
-					return true
-				},
-			],
-		])
+			await callAPI("sendMessage", {
+				chat_id: user.id,
+				text:
+					"הודעה נשלחה לכל המשתמשים הבאים:\n" +
+					successfulUsers
+						.map((id) => users.find((user) => user.id === id))
+						.map((user) => user!.username || user!.first_name),
+			})
+			return true
+		},
+		"/custom": async (msg: Message, user: UserData) => {
+			user.state = new CustomListState(user)
+			return true
+		},
+		"/auto": async (msg: Message, user: UserData) => {
+			await callAPI("sendMessage", {
+				chat_id: user.id,
+				text: "פיצ'ר זה עוד לא מוכן",
+			})
+			return true
+		},
 	}
 
 	async parse(msg: Message, user: UserData): Promise<void> {
 		if (!msg.text) return
-		if (await this.commands.get(msg.text.split(" ")[0])?.(msg, user)) return
+		if (await this.commands[msg.text.split(" ")[0]]?.(msg, user)) return
 
 		const time = Time.parseTime(msg.text)
 
