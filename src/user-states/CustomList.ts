@@ -250,6 +250,7 @@ export class CustomListState implements UserState {
 		if (nameList) {
 			stations ??= 1
 			startTime ??= new Time(12, 0)
+			const extras = nameList.length % stations
 			const chunks = Math.floor(nameList.length / stations)
 			const dayCount =
 				startDay !== undefined && endDay !== undefined
@@ -299,10 +300,12 @@ export class CustomListState implements UserState {
 					}
 				}
 			}
-			// if (nameList.length > chunks * stations)
-			// 	builder.push(
-			// 		`חיילים נותרים:\n${nameList.slice(chunks * stations).join("\n")}`
-			// 	)
+			if (nameList.length > chunks * stations)
+				builder.push(
+					`חיילים נותרים (${extras}):\n${nameList
+						.slice(chunks * stations)
+						.join("\n")}`
+				)
 		}
 
 		if (builder.length) {
