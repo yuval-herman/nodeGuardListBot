@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "fs/promises"
-import { UserData } from "../classes/User.js"
+import { UserData } from "../classes/UserData.js"
 import { callAPI } from "../telegramApi.js"
 import { HelpState } from "./Help.js"
 import { UserState } from "./UserState.js"

@@ -3,7 +3,7 @@ import {
 	callback_values_reversed,
 } from "../callbackQueryHandling.js"
 import { Time } from "../classes/Time.js"
-import { UserData } from "../classes/User.js"
+import { UserData } from "../classes/UserData.js"
 import { callAPI } from "../telegramApi.js"
 import { TextMessage } from "../types.js"
 import { UID, createList, validateTextMessage } from "../utils.js"

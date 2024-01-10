@@ -1,5 +1,5 @@
 import { Time } from "../classes/Time.js"
-import { UserData } from "../classes/User.js"
+import { UserData } from "../classes/UserData.js"
 import { callAPI } from "../telegramApi.js"
 import { createList, wait } from "../utils.js"
 import { GenericState } from "./Generic.js"

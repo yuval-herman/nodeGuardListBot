@@ -1,5 +1,5 @@
 import { Time } from "./classes/Time.js"
-import { UserData } from "./classes/User.js"
+import { UserData } from "./classes/UserData.js"
 
 export type OptionsParser = (
 	message: Message,

@@ -3,7 +3,7 @@ import {
 	callback_values,
 	handleCallbackQuery,
 } from "./callbackQueryHandling.js"
-import { UserData } from "./classes/User.js"
+import { UserData } from "./classes/UserData.js"
 import { CONSTANTS } from "./constants.js"
 import { callAPI, getUpdates } from "./telegramApi"
 import { Configs } from "./types"
